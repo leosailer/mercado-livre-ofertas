@@ -1,13 +1,25 @@
+import os
 import requests
 
+ACCESS_TOKEN = os.getenv("ML_ACCESS_TOKEN")
+
 URL = "https://api.mercadolibre.com/sites/MLB/search"
+
+headers = {
+    "Authorization": f"Bearer {ACCESS_TOKEN}"
+}
 
 parametros = {
     "q": "iphone",
     "limit": 5
 }
 
-resposta = requests.get(URL, params=parametros, timeout=20)
+resposta = requests.get(
+    URL,
+    headers=headers,
+    params=parametros,
+    timeout=30
+)
 
 print("STATUS:", resposta.status_code)
 
