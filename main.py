@@ -3,13 +3,15 @@ import requests
 
 ACCESS_TOKEN = os.getenv("ML_ACCESS_TOKEN")
 
-URL = "https://api.mercadolibre.com/sites/MLB/search"
+URL = "https://api.mercadolibre.com/products/search"
 
 headers = {
     "Authorization": f"Bearer {ACCESS_TOKEN}"
 }
 
 parametros = {
+    "status": "active",
+    "site_id": "MLB",
     "q": "iphone",
     "limit": 5
 }
@@ -26,12 +28,11 @@ print("STATUS:", resposta.status_code)
 if resposta.status_code == 200:
     dados = resposta.json()
 
-    print("\nOFERTAS ENCONTRADAS:\n")
+    print("\nPRODUTOS ENCONTRADOS:\n")
 
     for produto in dados.get("results", []):
-        print("Produto:", produto.get("title"))
-        print("Preço: R$", produto.get("price"))
-        print("Link:", produto.get("permalink"))
+        print("ID:", produto.get("id"))
+        print("Nome:", produto.get("name"))
         print("-" * 50)
 
 else:
