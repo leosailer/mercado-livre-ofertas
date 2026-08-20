@@ -14,7 +14,6 @@ import requests
 # =========================================================
 
 API_KEY = os.getenv("SERPAPI_KEY")
-
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
 
@@ -54,7 +53,7 @@ CARROS_TOP = [
 
 
 # =========================================================
-# MODELOS QUENTES
+# MODELOS QUENTES / TENDÊNCIAS
 # =========================================================
 
 TENDENCIAS_QUENTES = [
@@ -72,11 +71,12 @@ TENDENCIAS_QUENTES = [
     ("Porsche 911 GT3 RS", ["porsche", "911", "gt3", "rs"]),
 
     ("Nissan Skyline BNR32", ["nissan", "skyline", "bnr32"]),
+    ("Nissan Skyline R33", ["nissan", "skyline", "r33"]),
     ("NISMO 270R", ["nismo", "270r"]),
+
     ("Toyota Supra VeilSide", ["toyota", "supra", "veilside"]),
     ("Lamborghini Countach", ["lamborghini", "countach"]),
     ("Mazda RX-7 RE-Amemiya", ["mazda", "rx-7", "re-amemiya"]),
-    ("Nissan Skyline R33", ["nissan", "skyline", "r33"]),
     ("Ford Mustang GTD", ["ford", "mustang", "gtd"]),
     ("Koenigsegg Agera RS", ["koenigsegg", "agera", "rs"])
 ]
@@ -208,22 +208,18 @@ def carregar_historico():
         return {}
 
     try:
-
         with open(
             ARQUIVO_HISTORICO,
             "r",
             encoding="utf-8"
         ) as arquivo:
-
             return json.load(arquivo)
 
     except Exception as erro:
-
         print(
             "AVISO: erro ao carregar histórico:",
             erro
         )
-
         return {}
 
 
@@ -244,7 +240,7 @@ def salvar_historico(historico):
 
 
 # =========================================================
-# FUNÇÕES
+# FUNÇÕES DE IDENTIFICAÇÃO
 # =========================================================
 
 def texto_normalizado(texto):
@@ -322,11 +318,14 @@ def identificar_tendencia(titulo):
             termo.lower() in t
             for termo in termos
         ):
-
             return nome
 
     return None
 
+
+# =========================================================
+# VALIDAÇÕES
+# =========================================================
 
 def link_valido(link):
 
@@ -382,6 +381,10 @@ def preco_valido(marca, preco):
 
     return minimo <= preco <= maximo
 
+
+# =========================================================
+# PREÇOS
+# =========================================================
 
 def extrair_precos_texto(texto):
 
@@ -491,11 +494,9 @@ def detectar_desconto(
     if not candidatos:
         return None
 
-
     preco_anterior = max(
         candidatos
     )
-
 
     desconto = (
         (
@@ -505,7 +506,6 @@ def detectar_desconto(
         / preco_anterior
     ) * 100
 
-
     if 5 <= desconto <= 80:
         return desconto
 
@@ -513,16 +513,16 @@ def detectar_desconto(
 
 
 # =========================================================
-# ENVIAR E-MAIL
+# FUNÇÃO DE ENVIO DE E-MAIL
 # =========================================================
 
-def enviar_email(ofertas):
-
-    if not ofertas:
-        return True
-
+def enviar_mensagem_email(
+    assunto,
+    corpo
+):
 
     if not EMAIL_DESTINO:
+
         print(
             "ERRO: EMAIL_DESTINO não configurado."
         )
@@ -531,6 +531,7 @@ def enviar_email(ofertas):
 
 
     if not GMAIL_APP_PASSWORD:
+
         print(
             "ERRO: GMAIL_APP_PASSWORD não configurado."
         )
@@ -540,51 +541,99 @@ def enviar_email(ofertas):
 
     mensagem = EmailMessage()
 
+    mensagem["Subject"] = assunto
+    mensagem["From"] = EMAIL_DESTINO
+    mensagem["To"] = EMAIL_DESTINO
+
+    mensagem.set_content(
+        corpo
+    )
+
+
+    contexto = ssl.create_default_context()
+
+
+    try:
+
+        with smtplib.SMTP_SSL(
+            "smtp.gmail.com",
+            465,
+            context=context
+        ) as servidor:
+
+            servidor.login(
+                EMAIL_DESTINO,
+                GMAIL_APP_PASSWORD
+            )
+
+            servidor.send_message(
+                mensagem
+            )
+
+
+        print(
+            "EMAIL ENVIADO COM SUCESSO."
+        )
+
+        return True
+
+
+    except Exception as erro:
+
+        print(
+            "ERRO AO ENVIAR EMAIL:",
+            erro
+        )
+
+        return False
+
+
+# =========================================================
+# E-MAIL DE OFERTAS
+# =========================================================
+
+def enviar_email_ofertas(ofertas):
 
     if len(ofertas) == 1:
 
         assunto = (
-            "🚨 Nova oferta Diecast encontrada"
+            "🚨 Nova oferta Diecast encontrada!"
         )
 
     else:
 
         assunto = (
-            f"🚨 {len(ofertas)} novas ofertas Diecast"
+            f"🚨 {len(ofertas)} novas ofertas Diecast!"
         )
-
-
-    mensagem["Subject"] = assunto
-
-    mensagem["From"] = EMAIL_DESTINO
-
-    mensagem["To"] = EMAIL_DESTINO
 
 
     corpo = []
 
     corpo.append(
-        "🚗 BUSCADOR DIECAST - NOVAS OFERTAS"
+        "🚗 BUSCADOR DIECAST"
     )
 
     corpo.append("")
 
     corpo.append(
         f"Foram encontradas {len(ofertas)} "
-        "oferta(s) nova(s) ou queda(s) de preço."
+        "nova(s) oferta(s) ou queda(s) de preço."
     )
 
     corpo.append("")
 
-    corpo.append("=" * 60)
-
-    corpo.append("")
+    corpo.append(
+        "=" * 60
+    )
 
 
     for numero, item in enumerate(
         ofertas,
         start=1
     ):
+
+        corpo.append("")
+
 
         if (
             item.get("tipo_alerta")
@@ -627,7 +676,7 @@ def enviar_email(ofertas):
         if item["tendencia"]:
 
             corpo.append(
-                "Tendência: "
+                "🔥 Tendência: "
                 + item["tendencia"]
             )
 
@@ -649,13 +698,13 @@ def enviar_email(ofertas):
             if anterior is not None:
 
                 corpo.append(
-                    f"Preço anterior encontrado: "
+                    f"Preço anterior: "
                     f"R$ {anterior:.2f}"
                 )
 
 
         corpo.append(
-            f"Preço atual: "
+            f"💰 Preço atual: "
             f"R$ {item['preco']:.2f}"
         )
 
@@ -663,7 +712,7 @@ def enviar_email(ofertas):
         if item["desconto"] is not None:
 
             corpo.append(
-                f"Desconto identificado: "
+                f"🔥 Desconto: "
                 f"{item['desconto']:.1f}%"
             )
 
@@ -671,7 +720,7 @@ def enviar_email(ofertas):
         corpo.append("")
 
         corpo.append(
-            "Link Mercado Livre:"
+            "🔗 Link:"
         )
 
         corpo.append(
@@ -684,63 +733,60 @@ def enviar_email(ofertas):
             "-" * 60
         )
 
-        corpo.append("")
 
+    corpo.append("")
 
     corpo.append(
-        "Os links acima também foram salvos "
-        "em links_para_afiliado.txt."
+        "Os links também estão no arquivo "
+        "links_para_afiliado.txt."
     )
 
     corpo.append("")
 
     corpo.append(
-        "Abra o Gerador de Links do Mercado Livre, "
-        "cole os links e gere os links de afiliado."
+        "Agora é só gerar os links de afiliado "
+        "no Mercado Livre."
     )
 
 
-    mensagem.set_content(
+    return enviar_mensagem_email(
+        assunto,
         "\n".join(corpo)
     )
 
 
-    contexto = ssl.create_default_context()
+# =========================================================
+# E-MAIL QUANDO NÃO ENCONTRAR NADA
+# =========================================================
+
+def enviar_email_sem_ofertas():
+
+    assunto = (
+        "🔎 Buscador Diecast - Nenhuma oferta nova"
+    )
 
 
-    try:
+    corpo = """
+🔎 BUSCADOR DIECAST
 
-        with smtplib.SMTP_SSL(
-            "smtp.gmail.com",
-            465,
-            context=context
-        ) as servidor:
+A busca automática foi concluída com sucesso.
 
-            servidor.login(
-                EMAIL_DESTINO,
-                GMAIL_APP_PASSWORD
-            )
+Nenhuma oferta nova ou queda de preço foi encontrada nesta rodada.
 
-            servidor.send_message(
-                mensagem
-            )
+✅ O buscador está funcionando normalmente.
 
+🔄 As ofertas já encontradas anteriormente foram ignoradas.
 
-        print(
-            "EMAIL ENVIADO COM SUCESSO."
-        )
+O sistema continuará fazendo novas buscas automaticamente nos horários programados.
 
-        return True
+Assim que aparecer uma oferta nova ou uma queda de preço, você receberá outro e-mail automaticamente.
+"""
 
 
-    except Exception as erro:
-
-        print(
-            "ERRO AO ENVIAR EMAIL:",
-            erro
-        )
-
-        return False
+    return enviar_mensagem_email(
+        assunto,
+        corpo
+    )
 
 
 # =========================================================
@@ -877,7 +923,6 @@ for numero, busca in enumerate(
             ]
 
             if validos:
-
                 preco = validos[0]
 
 
@@ -885,7 +930,6 @@ for numero, busca in enumerate(
             marca,
             preco
         ):
-
             preco = None
 
 
@@ -922,15 +966,11 @@ ofertas = []
 for item in resultados:
 
     preco = item["preco"]
-
     marca = item["marca"]
-
     desconto = item["desconto"]
 
     item["status"] = None
 
-
-    # HOT WHEELS PREMIUM/SILVER < 69
 
     if (
         marca == "Hot Wheels"
@@ -944,8 +984,6 @@ for item in resultados:
         )
 
 
-    # DESCONTO >= 15%
-
     elif (
         desconto is not None
         and desconto >= 15
@@ -955,8 +993,6 @@ for item in resultados:
             "🔥🔥 DESCONTO DE 15% OU MAIS"
         )
 
-
-    # HOT WHEELS < 99
 
     elif (
         marca == "Hot Wheels"
@@ -970,8 +1006,6 @@ for item in resultados:
         )
 
 
-    # MINI GT < 150
-
     elif (
         marca == "Mini GT"
         and preco is not None
@@ -984,7 +1018,6 @@ for item in resultados:
 
 
     if item["status"]:
-
         ofertas.append(
             item
         )
@@ -1002,7 +1035,6 @@ ofertas_para_enviar = []
 for item in ofertas:
 
     link = item["link"]
-
     preco = item["preco"]
 
 
@@ -1060,7 +1092,7 @@ for item in ofertas:
 
 
 # =========================================================
-# ORDENAR
+# ORDENAR OFERTAS
 # =========================================================
 
 ordem = {
@@ -1092,7 +1124,7 @@ ofertas_para_enviar.sort(
 
 
 # =========================================================
-# GERAR LINKS PARA AFILIADO
+# GERAR ARQUIVO DE LINKS PARA AFILIADO
 # =========================================================
 
 with open(
@@ -1125,55 +1157,87 @@ print(
 # ENVIAR E-MAIL
 # =========================================================
 
-email_enviado = True
+email_enviado = False
 
 
 if ofertas_para_enviar:
 
-    email_enviado = enviar_email(
-        ofertas_para_enviar
+    print(
+        "Foram encontradas novas ofertas."
     )
 
+    print(
+        "Enviando e-mail de ofertas..."
+    )
 
-# =========================================================
-# SÓ GRAVA NO HISTÓRICO SE O E-MAIL FOI ENVIADO
-# =========================================================
-
-if email_enviado:
-
-    for item in ofertas_para_enviar:
-
-        historico[
-            item["link"]
-        ] = {
-
-            "menor_preco":
-                item["preco"],
-
-            "titulo":
-                item["titulo"],
-
-            "marca":
-                item["marca"]
-        }
-
-
-    salvar_historico(
-        historico
+    email_enviado = enviar_email_ofertas(
+        ofertas_para_enviar
     )
 
 
 else:
 
     print(
-        "ATENÇÃO: o histórico NÃO foi atualizado "
-        "porque o e-mail falhou."
+        "Nenhuma oferta nova encontrada."
     )
 
     print(
-        "A oferta será tentada novamente "
-        "na próxima execução."
+        "Enviando e-mail de status..."
     )
+
+    email_enviado = enviar_email_sem_ofertas()
+
+
+# =========================================================
+# ATUALIZAR HISTÓRICO
+# =========================================================
+
+if ofertas_para_enviar:
+
+    if email_enviado:
+
+        for item in ofertas_para_enviar:
+
+            historico[
+                item["link"]
+            ] = {
+
+                "menor_preco":
+                    item["preco"],
+
+                "titulo":
+                    item["titulo"],
+
+                "marca":
+                    item["marca"]
+            }
+
+
+        salvar_historico(
+            historico
+        )
+
+
+        print(
+            "Histórico atualizado com sucesso."
+        )
+
+
+    else:
+
+        print(
+            "ATENÇÃO: o e-mail falhou."
+        )
+
+        print(
+            "As novas ofertas NÃO foram marcadas "
+            "como enviadas."
+        )
+
+        print(
+            "Elas serão tentadas novamente "
+            "na próxima execução."
+        )
 
 
 # =========================================================
@@ -1248,14 +1312,32 @@ for item in ofertas_para_enviar:
     )
 
 
+    if item["carros_top"]:
+
+        print(
+            "CARRO TOP:",
+            ", ".join(
+                item["carros_top"]
+            )
+        )
+
+
+    if item["tendencia"]:
+
+        print(
+            "🔥 TENDÊNCIA:",
+            item["tendencia"]
+        )
+
+
     print(
-        "TITULO:",
+        "TÍTULO:",
         item["titulo"]
     )
 
 
     print(
-        f"PRECO: "
+        f"PREÇO: "
         f"R$ {item['preco']:.2f}"
     )
 
@@ -1285,6 +1367,15 @@ if not ofertas_para_enviar:
         "Nenhuma oferta nova encontrada."
     )
 
+
+if email_enviado:
+
     print(
-        "Nenhum e-mail foi enviado."
+        "📧 E-MAIL ENVIADO COM SUCESSO."
+    )
+
+else:
+
+    print(
+        "❌ E-MAIL NÃO FOI ENVIADO."
     )
