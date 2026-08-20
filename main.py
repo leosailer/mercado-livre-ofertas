@@ -232,7 +232,7 @@ def salvar_historico(historico):
 
 
 # =========================================================
-# FUNÇÕES DE IDENTIFICAÇÃO
+# FUNÇÕES
 # =========================================================
 
 def texto_normalizado(texto):
@@ -299,10 +299,6 @@ def identificar_tendencia(titulo):
     return None
 
 
-# =========================================================
-# VALIDAÇÕES
-# =========================================================
-
 def link_valido(link):
     formatos = [
         "/p/",
@@ -354,10 +350,6 @@ def preco_valido(marca, preco):
     return minimo <= preco <= maximo
 
 
-# =========================================================
-# PREÇOS
-# =========================================================
-
 def extrair_precos_texto(texto):
     valores = re.findall(
         r"R\$\s*([\d\.]+,\d{2})",
@@ -368,14 +360,13 @@ def extrair_precos_texto(texto):
 
     for valor in valores:
         try:
-            numero = float(
-                valor
-                .replace(".", "")
-                .replace(",", ".")
+            precos.append(
+                float(
+                    valor
+                    .replace(".", "")
+                    .replace(",", ".")
+                )
             )
-
-            precos.append(numero)
-
         except:
             pass
 
@@ -383,19 +374,11 @@ def extrair_precos_texto(texto):
 
 
 def preco_rich_snippet(item):
-    rich = item.get(
-        "rich_snippet",
-        {}
-    )
+    rich = item.get("rich_snippet", {})
 
-    for posicao in [
-        "top",
-        "bottom"
-    ]:
-
+    for posicao in ["top", "bottom"]:
         detected = rich.get(
-            posicao,
-            {}
+            posicao, {}
         ).get(
             "detected_extensions",
             {}
@@ -406,7 +389,6 @@ def preco_rich_snippet(item):
         if preco is not None:
             try:
                 return float(preco)
-
             except:
                 pass
 
@@ -437,7 +419,6 @@ def detectar_desconto(trecho, preco_atual):
 
             if 0 < percentual <= 80:
                 return percentual
-
 
     precos = extrair_precos_texto(
         trecho
@@ -474,7 +455,84 @@ def detectar_desconto(trecho, preco_atual):
 
 
 # =========================================================
-# ENVIO DE E-MAIL
+# MENSAGEM PRONTA PARA WHATSAPP
+# =========================================================
+
+def gerar_texto_whatsapp(item):
+
+    linhas = []
+
+    if (
+        item.get("tipo_alerta")
+        == "QUEDA_PRECO"
+    ):
+        linhas.append(
+            "📉 *PREÇO CAIU!*"
+        )
+    else:
+        linhas.append(
+            "🚨 *OFERTA DIECAST!*"
+        )
+
+    linhas.append("")
+
+    linhas.append(
+        f"🏎️ *{item['titulo']}*"
+    )
+
+    linhas.append("")
+
+    if (
+        item.get("tipo_alerta")
+        == "QUEDA_PRECO"
+    ):
+
+        anterior = item.get(
+            "preco_anterior_encontrado"
+        )
+
+        if anterior is not None:
+            linhas.append(
+                f"❌ Antes: R$ {anterior:.2f}"
+            )
+
+    linhas.append(
+        f"💰 *Agora: R$ {item['preco']:.2f}*"
+    )
+
+    if item["desconto"] is not None:
+        linhas.append(
+            f"🔥 Desconto identificado: "
+            f"*{item['desconto']:.0f}%*"
+        )
+
+    if item["tendencia"]:
+        linhas.append(
+            f"📈 Modelo em alta: "
+            f"{item['tendencia']}"
+        )
+
+    linhas.append("")
+
+    linhas.append(
+        "🛒 Comprar:"
+    )
+
+    linhas.append(
+        item["link"]
+    )
+
+    linhas.append("")
+
+    linhas.append(
+        "⚠️ Preço pode mudar a qualquer momento."
+    )
+
+    return "\n".join(linhas)
+
+
+# =========================================================
+# E-MAIL
 # =========================================================
 
 def enviar_mensagem_email(
@@ -488,13 +546,11 @@ def enviar_mensagem_email(
         )
         return False
 
-
     if not GMAIL_APP_PASSWORD:
         print(
             "ERRO: GMAIL_APP_PASSWORD não configurado."
         )
         return False
-
 
     mensagem = EmailMessage()
 
@@ -506,9 +562,7 @@ def enviar_mensagem_email(
         corpo
     )
 
-
     contexto = ssl.create_default_context()
-
 
     try:
 
@@ -527,13 +581,11 @@ def enviar_mensagem_email(
                 mensagem
             )
 
-
         print(
             "EMAIL ENVIADO COM SUCESSO."
         )
 
         return True
-
 
     except Exception as erro:
 
@@ -545,22 +597,16 @@ def enviar_mensagem_email(
         return False
 
 
-# =========================================================
-# E-MAIL DE OFERTAS
-# =========================================================
-
 def enviar_email_ofertas(ofertas):
 
     if len(ofertas) == 1:
         assunto = (
             "🚨 Nova oferta Diecast encontrada!"
         )
-
     else:
         assunto = (
             f"🚨 {len(ofertas)} novas ofertas Diecast!"
         )
-
 
     corpo = []
 
@@ -581,31 +627,15 @@ def enviar_email_ofertas(ofertas):
         "=" * 60
     )
 
-
     for numero, item in enumerate(
         ofertas,
         start=1
     ):
 
         corpo.append("")
-
-
-        if (
-            item.get("tipo_alerta")
-            == "QUEDA_PRECO"
-        ):
-
-            corpo.append(
-                f"📉 {numero}. PREÇO CAIU!"
-            )
-
-        else:
-
-            corpo.append(
-                f"🔥 {numero}. NOVA OFERTA"
-            )
-
-
+        corpo.append(
+            f"OFERTA {numero}"
+        )
         corpo.append("")
 
         corpo.append(
@@ -616,9 +646,7 @@ def enviar_email_ofertas(ofertas):
             f"Marca: {item['marca']}"
         )
 
-
         if item["carros_top"]:
-
             corpo.append(
                 "Carro top: "
                 + ", ".join(
@@ -626,19 +654,15 @@ def enviar_email_ofertas(ofertas):
                 )
             )
 
-
         if item["tendencia"]:
-
             corpo.append(
-                "🔥 Tendência: "
+                "Tendência: "
                 + item["tendencia"]
             )
-
 
         corpo.append(
             f"Produto: {item['titulo']}"
         )
-
 
         if (
             item.get("tipo_alerta")
@@ -650,58 +674,62 @@ def enviar_email_ofertas(ofertas):
             )
 
             if anterior is not None:
-
                 corpo.append(
                     f"Preço anterior: "
                     f"R$ {anterior:.2f}"
                 )
 
-
         corpo.append(
-            f"💰 Preço atual: "
+            f"Preço atual: "
             f"R$ {item['preco']:.2f}"
         )
 
-
         if item["desconto"] is not None:
-
             corpo.append(
-                f"🔥 Desconto: "
+                f"Desconto: "
                 f"{item['desconto']:.1f}%"
             )
 
-
         corpo.append("")
-
         corpo.append(
-            "🔗 Link:"
+            "Link original:"
         )
-
         corpo.append(
             item["link"]
         )
 
         corpo.append("")
-
         corpo.append(
-            "-" * 60
+            "📲 MENSAGEM PRONTA PARA WHATSAPP"
+        )
+        corpo.append("")
+        corpo.append(
+            gerar_texto_whatsapp(
+                item
+            )
         )
 
+        corpo.append("")
+        corpo.append(
+            "=" * 60
+        )
+
+    corpo.append("")
+    corpo.append(
+        "IMPORTANTE:"
+    )
+
+    corpo.append(
+        "Antes de publicar no grupo, substitua "
+        "o link original pelo seu link de afiliado."
+    )
 
     corpo.append("")
 
     corpo.append(
-        "Os links também estão no arquivo "
+        "Os links originais também estão em "
         "links_para_afiliado.txt."
     )
-
-    corpo.append("")
-
-    corpo.append(
-        "Agora é só gerar os links de afiliado "
-        "no Mercado Livre."
-    )
-
 
     return enviar_mensagem_email(
         assunto,
@@ -709,33 +737,24 @@ def enviar_email_ofertas(ofertas):
     )
 
 
-# =========================================================
-# E-MAIL QUANDO NÃO ENCONTRAR NADA
-# =========================================================
-
 def enviar_email_sem_ofertas():
 
     assunto = (
         "🔎 Buscador Diecast - Nenhuma oferta nova"
     )
 
-
     corpo = """
 🔎 BUSCADOR DIECAST
 
-A busca automática foi concluída com sucesso.
+Busca automática concluída com sucesso.
 
 Nenhuma oferta nova ou queda de preço foi encontrada nesta rodada.
 
-✅ O buscador está funcionando normalmente.
+✅ Sistema funcionando normalmente.
+🔄 Ofertas já encontradas anteriormente foram ignoradas.
 
-🔄 As ofertas já encontradas anteriormente foram ignoradas.
-
-O sistema continuará fazendo novas buscas automaticamente nos horários programados.
-
-Assim que aparecer uma oferta nova ou uma queda de preço, você receberá outro e-mail automaticamente.
+O buscador continuará monitorando automaticamente.
 """
-
 
     return enviar_mensagem_email(
         assunto,
@@ -750,7 +769,6 @@ Assim que aparecer uma oferta nova ou uma queda de preço, você receberá outro
 links_vistos = set()
 resultados = []
 
-
 for numero, busca in enumerate(
     BUSCAS,
     start=1
@@ -761,7 +779,6 @@ for numero, busca in enumerate(
         f"{numero}/{len(BUSCAS)}..."
     )
 
-
     parametros = {
         "engine": "google",
         "q": busca,
@@ -771,7 +788,6 @@ for numero, busca in enumerate(
         "api_key": API_KEY
     }
 
-
     try:
 
         resposta = requests.get(
@@ -779,7 +795,6 @@ for numero, busca in enumerate(
             params=parametros,
             timeout=30
         )
-
 
     except Exception as erro:
 
@@ -790,7 +805,6 @@ for numero, busca in enumerate(
 
         continue
 
-
     if resposta.status_code != 200:
 
         print(
@@ -800,9 +814,7 @@ for numero, busca in enumerate(
 
         continue
 
-
     dados = resposta.json()
-
 
     for item in dados.get(
         "organic_results",
@@ -824,18 +836,14 @@ for numero, busca in enumerate(
             ""
         )
 
-
         if not link_valido(link):
             continue
-
 
         if link in links_vistos:
             continue
 
-
         if deve_excluir(titulo):
             continue
-
 
         if not hot_wheels_valido(
             titulo,
@@ -843,22 +851,18 @@ for numero, busca in enumerate(
         ):
             continue
 
-
         links_vistos.add(
             link
         )
-
 
         marca = identificar_marca(
             titulo,
             link
         )
 
-
         preco = preco_rich_snippet(
             item
         )
-
 
         if preco is None:
 
@@ -878,19 +882,16 @@ for numero, busca in enumerate(
             if validos:
                 preco = validos[0]
 
-
         if not preco_valido(
             marca,
             preco
         ):
             preco = None
 
-
         desconto = detectar_desconto(
             trecho,
             preco
         )
-
 
         resultados.append({
             "titulo": titulo,
@@ -915,7 +916,6 @@ for numero, busca in enumerate(
 
 ofertas = []
 
-
 for item in resultados:
 
     preco = item["preco"]
@@ -923,7 +923,6 @@ for item in resultados:
     desconto = item["desconto"]
 
     item["status"] = None
-
 
     if (
         marca == "Hot Wheels"
@@ -936,7 +935,6 @@ for item in resultados:
             "ABAIXO DE R$69"
         )
 
-
     elif (
         desconto is not None
         and desconto >= 15
@@ -945,7 +943,6 @@ for item in resultados:
         item["status"] = (
             "🔥🔥 DESCONTO DE 15% OU MAIS"
         )
-
 
     elif (
         marca == "Hot Wheels"
@@ -958,7 +955,6 @@ for item in resultados:
             "ABAIXO DE R$99"
         )
 
-
     elif (
         marca == "Mini GT"
         and preco is not None
@@ -969,7 +965,6 @@ for item in resultados:
             "🔥 MINI GT ABAIXO DE R$150"
         )
 
-
     if item["status"]:
         ofertas.append(
             item
@@ -977,28 +972,23 @@ for item in resultados:
 
 
 # =========================================================
-# VERIFICAR HISTÓRICO
+# HISTÓRICO
 # =========================================================
 
 historico = carregar_historico()
-
 ofertas_para_enviar = []
-
 
 for item in ofertas:
 
     link = item["link"]
     preco = item["preco"]
 
-
     if preco is None:
         continue
-
 
     registro_anterior = historico.get(
         link
     )
-
 
     if registro_anterior is None:
 
@@ -1012,13 +1002,11 @@ for item in ofertas:
 
         continue
 
-
     menor_preco_anterior = (
         registro_anterior.get(
             "menor_preco"
         )
     )
-
 
     if (
         menor_preco_anterior is None
@@ -1029,11 +1017,9 @@ for item in ofertas:
             "preco_anterior_encontrado"
         ] = menor_preco_anterior
 
-
         item["tipo_alerta"] = (
             "QUEDA_PRECO"
         )
-
 
         ofertas_para_enviar.append(
             item
@@ -1041,7 +1027,7 @@ for item in ofertas:
 
 
 # =========================================================
-# ORDENAR OFERTAS
+# ORDENAR
 # =========================================================
 
 ordem = {
@@ -1073,7 +1059,7 @@ ofertas_para_enviar.sort(
 
 
 # =========================================================
-# GERAR ARQUIVO DE LINKS PARA AFILIADO
+# ARQUIVO DE LINKS PARA AFILIADO
 # =========================================================
 
 with open(
@@ -1123,7 +1109,6 @@ if ofertas_para_enviar:
         ofertas_para_enviar
     )
 
-
 else:
 
     print(
@@ -1161,16 +1146,13 @@ if ofertas_para_enviar:
                     item["marca"]
             }
 
-
         salvar_historico(
             historico
         )
 
-
         print(
             "Histórico atualizado com sucesso."
         )
-
 
     else:
 
@@ -1179,110 +1161,47 @@ if ofertas_para_enviar:
         )
 
         print(
-            "As novas ofertas NÃO foram marcadas "
+            "As ofertas não foram marcadas "
             "como enviadas."
         )
 
 
 # =========================================================
-# RESULTADO NO GITHUB
+# RESULTADO
 # =========================================================
 
 print()
-
-print(
-    "=" * 80
-)
+print("=" * 80)
 
 print(
     "NOVAS OFERTAS / QUEDAS DE PREÇO:",
     len(ofertas_para_enviar)
 )
 
-print(
-    "=" * 80
-)
-
+print("=" * 80)
 print()
 
 
 for item in ofertas_para_enviar:
 
-    if (
-        item.get("tipo_alerta")
-        == "QUEDA_PRECO"
-    ):
-
-        print(
-            "📉📉 PREÇO CAIU NOVAMENTE!"
-        )
-
-
-        anterior = item.get(
-            "preco_anterior_encontrado"
-        )
-
-
-        if anterior is not None:
-
-            print(
-                f"ANTES: "
-                f"R$ {anterior:.2f}"
-            )
-
-            print(
-                f"AGORA: "
-                f"R$ {item['preco']:.2f}"
-            )
-
-
-    else:
-
-        print(
-            "🆕 NOVA OFERTA"
-        )
-
-
     print(
         item["status"]
     )
-
 
     print(
         "MARCA:",
         item["marca"]
     )
 
-
-    if item["carros_top"]:
-
-        print(
-            "CARRO TOP:",
-            ", ".join(
-                item["carros_top"]
-            )
-        )
-
-
-    if item["tendencia"]:
-
-        print(
-            "🔥 TENDÊNCIA:",
-            item["tendencia"]
-        )
-
-
     print(
         "TÍTULO:",
         item["titulo"]
     )
 
-
     print(
         f"PREÇO: "
         f"R$ {item['preco']:.2f}"
     )
-
 
     if item["desconto"] is not None:
 
@@ -1291,15 +1210,12 @@ for item in ofertas_para_enviar:
             f"{item['desconto']:.1f}%"
         )
 
-
     print(
         "LINK:",
         item["link"]
     )
 
-    print(
-        "-" * 80
-    )
+    print("-" * 80)
 
 
 if not ofertas_para_enviar:
