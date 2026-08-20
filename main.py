@@ -14,29 +14,29 @@ headers = {
 resposta = requests.get(URL, headers=headers, timeout=30)
 
 print("STATUS:", resposta.status_code)
+print("TAMANHO:", len(resposta.text))
 
 if resposta.status_code != 200:
-    print("ERRO AO ACESSAR A PAGINA")
+    print("ERRO AO ACESSAR")
     exit()
 
 soup = BeautifulSoup(resposta.text, "html.parser")
 
-produtos = soup.select("li.ui-search-layout__item")
+links_encontrados = []
 
-print("\nQUANTIDADE ENCONTRADA:", len(produtos))
-print("\nOFERTAS:\n")
+for a in soup.find_all("a", href=True):
+    link = a["href"]
 
-for produto in produtos[:10]:
+    if "mercadolivre.com.br" in link:
+        texto = a.get_text(" ", strip=True)
 
-    titulo_elemento = produto.select_one("h2")
-    link_elemento = produto.select_one("a")
-    preco_elemento = produto.select_one(".andes-money-amount__fraction")
+        if texto and link not in [x[1] for x in links_encontrados]:
+            links_encontrados.append((texto, link))
 
-    titulo = titulo_elemento.get_text(strip=True) if titulo_elemento else "Sem titulo"
-    link = link_elemento.get("href") if link_elemento else "Sem link"
-    preco = preco_elemento.get_text(strip=True) if preco_elemento else "Sem preco"
+print("\nLINKS ENCONTRADOS:", len(links_encontrados))
+print("\nPRIMEIROS RESULTADOS:\n")
 
-    print("Produto:", titulo)
-    print("Preco: R$", preco)
-    print("Link:", link)
-    print("-" * 60)
+for texto, link in links_encontrados[:20]:
+    print("TEXTO:", texto[:150])
+    print("LINK:", link)
+    print("-" * 70)
