@@ -13,6 +13,7 @@ API_KEY = os.getenv("SERPAPI_KEY")
 URL = "https://serpapi.com/search.json"
 
 ARQUIVO_HISTORICO = Path("ofertas_vistas.json")
+ARQUIVO_LINKS_AFILIADO = Path("links_para_afiliado.txt")
 
 
 # =========================================================
@@ -55,13 +56,11 @@ TENDENCIAS_QUENTES = [
     ("Ferrari Enzo", ["ferrari", "enzo"]),
     ("Ferrari 499P", ["ferrari", "499p"]),
     ("Ferrari F50", ["ferrari", "f50"]),
-
     ("Porsche 993 GT2", ["porsche", "993", "gt2"]),
     ("Porsche 917K", ["porsche", "917k"]),
     ("Porsche Carrera GT", ["porsche", "carrera", "gt"]),
     ("Porsche 911 Carrera RS", ["porsche", "911", "carrera", "rs"]),
     ("Porsche 911 GT3 RS", ["porsche", "911", "gt3", "rs"]),
-
     ("Nissan Skyline BNR32", ["nissan", "skyline", "bnr32"]),
     ("NISMO 270R", ["nismo", "270r"]),
     ("Toyota Supra VeilSide", ["toyota", "supra", "veilside"]),
@@ -147,8 +146,6 @@ PALAVRAS_EXCLUIR = [
     "caixa organizadora",
     "suporte",
     "protetor blister",
-
-    # Produtos usados/abertos
     "usado",
     "loose",
     "aberto",
@@ -156,7 +153,6 @@ PALAVRAS_EXCLUIR = [
     "sem embalagem",
     "avariado"
 ]
-
 
 HOT_WHEELS_PERMITIDOS = [
     "premium",
@@ -174,7 +170,6 @@ HOT_WHEELS_PERMITIDOS = [
     "aniversário",
     "aniversario"
 ]
-
 
 FAIXAS_VALIDAS = {
     "Hot Wheels": (20, 1000),
@@ -196,32 +191,26 @@ FAIXAS_VALIDAS = {
 # =========================================================
 
 def carregar_historico():
-
     if not ARQUIVO_HISTORICO.exists():
         return {}
 
     try:
-
         with open(
             ARQUIVO_HISTORICO,
             "r",
             encoding="utf-8"
         ) as arquivo:
-
             return json.load(arquivo)
 
     except Exception as erro:
-
         print(
             "AVISO: não foi possível carregar histórico:",
             erro
         )
-
         return {}
 
 
 def salvar_historico(historico):
-
     with open(
         ARQUIVO_HISTORICO,
         "w",
@@ -241,7 +230,6 @@ def salvar_historico(historico):
 # =========================================================
 
 def texto_normalizado(texto):
-
     return re.sub(
         r'\s+',
         ' ',
@@ -250,7 +238,6 @@ def texto_normalizado(texto):
 
 
 def identificar_marca(titulo, link):
-
     combinado = texto_normalizado(
         f"{titulo} {link}"
     )
@@ -292,13 +279,11 @@ def identificar_marca(titulo, link):
 
 
 def identificar_carros_top(titulo):
-
     t = texto_normalizado(titulo)
 
     encontrados = []
 
     for carro in CARROS_TOP:
-
         if carro.lower() in t:
             encontrados.append(carro)
 
@@ -306,7 +291,6 @@ def identificar_carros_top(titulo):
 
 
 def identificar_tendencia(titulo):
-
     t = texto_normalizado(titulo)
 
     for nome, termos in TENDENCIAS_QUENTES:
@@ -321,7 +305,6 @@ def identificar_tendencia(titulo):
 
 
 def link_valido(link):
-
     formatos = [
         "/p/",
         "/up/",
@@ -338,7 +321,6 @@ def link_valido(link):
 
 
 def deve_excluir(titulo):
-
     t = texto_normalizado(titulo)
 
     return any(
@@ -348,7 +330,6 @@ def deve_excluir(titulo):
 
 
 def hot_wheels_valido(titulo, link):
-
     combinado = texto_normalizado(
         f"{titulo} {link}"
     )
@@ -363,7 +344,6 @@ def hot_wheels_valido(titulo, link):
 
 
 def preco_valido(marca, preco):
-
     if preco is None:
         return False
 
@@ -376,7 +356,6 @@ def preco_valido(marca, preco):
 
 
 def extrair_precos_texto(texto):
-
     valores = re.findall(
         r'R\$\s*([\d\.]+,\d{2})',
         texto or ""
@@ -387,7 +366,6 @@ def extrair_precos_texto(texto):
     for valor in valores:
 
         try:
-
             numero = float(
                 valor
                 .replace(".", "")
@@ -403,7 +381,6 @@ def extrair_precos_texto(texto):
 
 
 def preco_rich_snippet(item):
-
     rich = item.get(
         "rich_snippet",
         {}
@@ -511,7 +488,6 @@ def detectar_desconto(
 # =========================================================
 
 links_vistos = set()
-
 resultados = []
 
 
@@ -527,23 +503,16 @@ for numero, busca in enumerate(
 
 
     parametros = {
-
         "engine": "google",
-
         "q": busca,
-
         "hl": "pt-br",
-
         "gl": "br",
-
         "num": 20,
-
         "api_key": API_KEY
     }
 
 
     try:
-
         resposta = requests.get(
             URL,
             params=parametros,
@@ -551,22 +520,18 @@ for numero, busca in enumerate(
         )
 
     except Exception as erro:
-
         print(
             "ERRO NA BUSCA:",
             erro
         )
-
         continue
 
 
     if resposta.status_code != 200:
-
         print(
             "ERRO:",
             resposta.status_code
         )
-
         continue
 
 
@@ -662,25 +627,18 @@ for numero, busca in enumerate(
 
 
         resultados.append({
-
             "titulo": titulo,
-
             "marca": marca,
-
             "preco": preco,
-
             "desconto": desconto,
-
             "carros_top":
                 identificar_carros_top(
                     titulo
                 ),
-
             "tendencia":
                 identificar_tendencia(
                     titulo
                 ),
-
             "link": link
         })
 
@@ -695,18 +653,11 @@ ofertas = []
 for item in resultados:
 
     preco = item["preco"]
-
     marca = item["marca"]
-
     desconto = item["desconto"]
-
 
     item["status"] = None
 
-
-    # -----------------------------------------
-    # HOT WHEELS PREMIUM / SILVER < R$69
-    # -----------------------------------------
 
     if (
         marca == "Hot Wheels"
@@ -720,10 +671,6 @@ for item in resultados:
         )
 
 
-    # -----------------------------------------
-    # DESCONTO >= 15%
-    # -----------------------------------------
-
     elif (
         desconto is not None
         and desconto >= 15
@@ -733,10 +680,6 @@ for item in resultados:
             "🔥🔥 DESCONTO DE 15% OU MAIS"
         )
 
-
-    # -----------------------------------------
-    # HOT WHEELS < R$99
-    # -----------------------------------------
 
     elif (
         marca == "Hot Wheels"
@@ -749,10 +692,6 @@ for item in resultados:
             "ABAIXO DE R$99"
         )
 
-
-    # -----------------------------------------
-    # MINI GT < R$150
-    # -----------------------------------------
 
     elif (
         marca == "Mini GT"
@@ -774,14 +713,12 @@ for item in resultados:
 # =========================================================
 
 historico = carregar_historico()
-
 ofertas_para_enviar = []
 
 
 for item in ofertas:
 
     link = item["link"]
-
     preco = item["preco"]
 
 
@@ -794,10 +731,7 @@ for item in ofertas:
     )
 
 
-    # =====================================================
-    # OFERTA NUNCA VISTA
-    # =====================================================
-
+    # NOVA OFERTA
     if registro_anterior is None:
 
         item["tipo_alerta"] = (
@@ -810,20 +744,13 @@ for item in ofertas:
 
 
         historico[link] = {
-
             "menor_preco": preco,
-
             "titulo": item["titulo"],
-
             "marca": item["marca"]
         }
 
         continue
 
-
-    # =====================================================
-    # OFERTA JÁ VISTA
-    # =====================================================
 
     menor_preco_anterior = (
         registro_anterior.get(
@@ -832,10 +759,7 @@ for item in ofertas:
     )
 
 
-    # =====================================================
     # PREÇO CAIU
-    # =====================================================
-
     if (
         menor_preco_anterior is None
         or preco < menor_preco_anterior
@@ -857,11 +781,8 @@ for item in ofertas:
 
 
         historico[link] = {
-
             "menor_preco": preco,
-
             "titulo": item["titulo"],
-
             "marca": item["marca"]
         }
 
@@ -874,10 +795,35 @@ salvar_historico(
     historico
 )
 
-
-# Agora só ficam ofertas novas ou que baixaram de preço
-
 ofertas = ofertas_para_enviar
+
+
+# =========================================================
+# GERAR ARQUIVO PARA AFILIADO
+# =========================================================
+
+with open(
+    ARQUIVO_LINKS_AFILIADO,
+    "w",
+    encoding="utf-8"
+) as arquivo:
+
+    for item in ofertas:
+        arquivo.write(
+            item["link"] + "\n"
+        )
+
+
+print()
+print(
+    "ARQUIVO GERADO:",
+    ARQUIVO_LINKS_AFILIADO
+)
+
+print(
+    "LINKS PARA AFILIADO:",
+    len(ofertas)
+)
 
 
 # =========================================================
@@ -885,30 +831,19 @@ ofertas = ofertas_para_enviar
 # =========================================================
 
 ordem = {
-
-    "🚨 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$69":
-        0,
-
-    "🔥🔥 DESCONTO DE 15% OU MAIS":
-        1,
-
-    "🔥 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$99":
-        2,
-
-    "🔥 MINI GT ABAIXO DE R$150":
-        3
+    "🚨 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$69": 0,
+    "🔥🔥 DESCONTO DE 15% OU MAIS": 1,
+    "🔥 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$99": 2,
+    "🔥 MINI GT ABAIXO DE R$150": 3
 }
 
 
 ofertas.sort(
-
     key=lambda x: (
-
         ordem.get(
             x["status"],
             99
         ),
-
         x["preco"]
         if x["preco"]
         else 999999
@@ -921,29 +856,18 @@ ofertas.sort(
 # =========================================================
 
 print()
-
-print(
-    "=" * 80
-)
+print("=" * 80)
 
 print(
     "NOVAS OFERTAS / QUEDAS DE PREÇO:",
     len(ofertas)
 )
 
-print(
-    "=" * 80
-)
-
+print("=" * 80)
 print()
 
 
 for item in ofertas:
-
-
-    # =====================================================
-    # QUEDA DE PREÇO
-    # =====================================================
 
     if (
         item.get("tipo_alerta")
@@ -971,11 +895,6 @@ for item in ofertas:
             )
 
         print()
-
-
-    # =====================================================
-    # NOVA OFERTA
-    # =====================================================
 
     else:
 
@@ -1039,7 +958,6 @@ for item in ofertas:
         "LINK:",
         item["link"]
     )
-
 
     print(
         "-" * 80
