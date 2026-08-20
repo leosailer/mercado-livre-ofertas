@@ -1,4 +1,23 @@
-- name: Executar buscador
-  env:
-    ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
-  run: python main.py
+name: Testar Buscador Mercado Livre
+
+on:
+  workflow_dispatch:
+
+jobs:
+  executar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar requests
+        run: pip install requests
+
+      - name: Executar buscador
+        run: python main.py
