@@ -40,16 +40,16 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python main.py
 
-      - name: Salvar historico
+      - name: Salvar historico e links
         run: |
           git config user.name "Buscador Diecast"
           git config user.email "actions@github.com"
 
-          git add ofertas_vistas.json
+          git add ofertas_vistas.json links_para_afiliado.txt
 
           if git diff --cached --quiet; then
-            echo "Nenhuma alteracao no historico"
+            echo "Nenhuma alteracao para salvar"
           else
-            git commit -m "Atualiza historico de ofertas"
+            git commit -m "Atualiza ofertas e links para afiliado"
             git push
           fi
