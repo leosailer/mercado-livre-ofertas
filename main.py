@@ -1,31 +1,20 @@
 import os
 import re
+import statistics
 import requests
 
 API_KEY = os.getenv("SERPAPI_KEY")
 
-BUSCAS = [
-    'site:mercadolivre.com.br "Hot Wheels" "1:64" -usado',
-    'site:mercadolivre.com.br "Matchbox" "1:64" -usado',
-    'site:mercadolivre.com.br ("Mini GT" OR "Kaido House") "1:64" -usado',
-    'site:mercadolivre.com.br "Tarmac Works" "1:64" -usado',
-    'site:mercadolivre.com.br ("Majorette" OR "Greenlight" OR "M2 Machines" OR "Tomica") "1:64" -usado'
-]
-
 URL = "https://serpapi.com/search.json"
 
-# Você poderá mudar estes valores depois
-LIMITES = {
-    "Hot Wheels": 30,
-    "Matchbox": 35,
-    "Mini GT": 100,
-    "Kaido House": 140,
-    "Tarmac Works": 110,
-    "Majorette": 60,
-    "Greenlight": 110,
-    "M2 Machines": 130,
-    "Tomica": 90
-}
+BUSCAS = [
+    'site:mercadolivre.com.br ("Hot Wheels Premium" OR "Hot Wheels Silver Series" OR "Hot Wheels Boulevard" OR "Hot Wheels Car Culture" OR "Hot Wheels Team Transport" OR "Hot Wheels RLC") -usado',
+    'site:mercadolivre.com.br "Mini GT" "1:64" -usado',
+    'site:mercadolivre.com.br "Kaido House" "1:64" -usado',
+    'site:mercadolivre.com.br "Tarmac Works" "1:64" -usado',
+    'site:mercadolivre.com.br ("Matchbox Collectors" OR "Matchbox Moving Parts" OR "Matchbox Premium") -usado',
+    'site:mercadolivre.com.br ("Majorette Premium" OR "Greenlight" OR "M2 Machines" OR "Tomica Premium") "1:64" -usado'
+]
 
 PALAVRAS_EXCLUIR = [
     "expositor",
@@ -35,11 +24,28 @@ PALAVRAS_EXCLUIR = [
     "garagem",
     "diorama",
     "adesivo",
-    "roda avulsa",
-    "pneu avulso",
+    "roda",
+    "pneu",
     "case",
     "caixa organizadora",
-    "suporte"
+    "suporte",
+    "protetor blister"
+]
+
+HOT_WHEELS_PERMITIDOS = [
+    "premium",
+    "silver series",
+    "boulevard",
+    "car culture",
+    "team transport",
+    "rlc",
+    "collector",
+    "collectors",
+    "edição especial",
+    "edicao especial",
+    "anniversary",
+    "aniversário",
+    "aniversario"
 ]
 
 
@@ -68,34 +74,35 @@ def identificar_marca(titulo):
     return "Outra"
 
 
+def link_valido(link):
+    if not link:
+        return False
+
+    formatos = [
+        "/p/",
+        "/up/",
+        "produto.mercadolivre.com.br/MLB-"
+    ]
+
+    return any(f in link for f in formatos)
+
+
 def deve_excluir(titulo):
-    titulo = titulo.lower()
+    t = titulo.lower()
 
-    for palavra in PALAVRAS_EXCLUIR:
-        if palavra in titulo:
-            return True
-
-    return False
+    return any(p in t for p in PALAVRAS_EXCLUIR)
 
 
-def preco_rich_snippet(item):
-    rich = item.get("rich_snippet", {})
+def hot_wheels_valido(titulo):
+    t = titulo.lower()
 
-    for posicao in ["top", "bottom"]:
-        detected = rich.get(posicao, {}).get("detected_extensions", {})
+    if "hot wheels" not in t:
+        return True
 
-        preco = detected.get("price")
-
-        if preco is not None:
-            try:
-                return float(preco)
-            except:
-                pass
-
-    return None
+    return any(p in t for p in HOT_WHEELS_PERMITIDOS)
 
 
-def preco_snippet(texto):
+def extrair_precos_texto(texto):
     valores = re.findall(r'R\$\s*([\d\.]+,\d{2})', texto)
 
     precos = []
@@ -109,10 +116,133 @@ def preco_snippet(texto):
         except:
             pass
 
-    if not precos:
+    return precos
+
+
+def preco_rich_snippet(item):
+    rich = item.get("rich_snippet", {})
+
+    for posicao in ["top", "bottom"]:
+        detected = rich.get(
+            posicao, {}
+        ).get("detected_extensions", {})
+
+        preco = detected.get("price")
+
+        if preco is not None:
+            try:
+                return float(preco)
+            except:
+                pass
+
+    return None
+
+
+def detectar_desconto(trecho, preco_atual):
+    if not trecho or not preco_atual:
         return None
 
-    return max(precos)
+    precos = extrair_precos_texto(trecho)
+
+    if len(precos) < 2:
+        return None
+
+    candidatos_maiores = [
+        p for p in precos
+        if p > preco_atual
+    ]
+
+    if not candidatos_maiores:
+        return None
+
+    preco_anterior = max(candidatos_maiores)
+
+    desconto = (
+        (preco_anterior - preco_atual)
+        / preco_anterior
+    ) * 100
+
+    if desconto < 0 or desconto > 90:
+        return None
+
+    return desconto
+
+
+def palavra_chave_modelo(titulo):
+    titulo = titulo.lower()
+
+    remover = [
+        "hot wheels",
+        "mini gt",
+        "kaido house",
+        "tarmac works",
+        "matchbox",
+        "majorette",
+        "greenlight",
+        "m2 machines",
+        "tomica",
+        "premium",
+        "1:64",
+        "1/64",
+        "miniatura",
+        "carrinho",
+        "diecast"
+    ]
+
+    for palavra in remover:
+        titulo = titulo.replace(palavra, " ")
+
+    titulo = re.sub(r'[^a-z0-9\s\-]', ' ', titulo)
+
+    palavras = [
+        p for p in titulo.split()
+        if len(p) >= 3
+    ]
+
+    return " ".join(palavras[:5])
+
+
+def calcular_media_mercado(item, todos):
+    chave = palavra_chave_modelo(
+        item["titulo"]
+    )
+
+    if len(chave) < 4:
+        return None
+
+    palavras = set(chave.split())
+
+    semelhantes = []
+
+    for outro in todos:
+
+        if outro["preco"] is None:
+            continue
+
+        if outro["marca"] != item["marca"]:
+            continue
+
+        chave_outro = palavra_chave_modelo(
+            outro["titulo"]
+        )
+
+        palavras_outro = set(
+            chave_outro.split()
+        )
+
+        intersecao = palavras.intersection(
+            palavras_outro
+        )
+
+        if len(intersecao) >= 2:
+            semelhantes.append(
+                outro["preco"]
+            )
+
+    if len(semelhantes) < 2:
+        return None
+
+    return statistics.median(semelhantes)
 
 
 links_vistos = set()
@@ -126,7 +256,7 @@ for busca in BUSCAS:
         "q": busca,
         "hl": "pt-br",
         "gl": "br",
-        "num": 10,
+        "num": 20,
         "api_key": API_KEY
     }
 
@@ -137,20 +267,31 @@ for busca in BUSCAS:
     )
 
     if resposta.status_code != 200:
+        print(
+            "Erro:",
+            resposta.status_code
+        )
         continue
 
     dados = resposta.json()
 
-    for item in dados.get("organic_results", []):
+    for item in dados.get(
+        "organic_results", []
+    ):
 
-        titulo = item.get("title", "")
-        link = item.get("link", "")
-        trecho = item.get("snippet", "")
+        titulo = item.get(
+            "title", ""
+        )
 
-        if "lista.mercadolivre.com.br" in link:
-            continue
+        link = item.get(
+            "link", ""
+        )
 
-        if "mercadolivre.com.br" not in link:
+        trecho = item.get(
+            "snippet", ""
+        )
+
+        if not link_valido(link):
             continue
 
         if link in links_vistos:
@@ -159,65 +300,139 @@ for busca in BUSCAS:
         if deve_excluir(titulo):
             continue
 
+        if not hot_wheels_valido(titulo):
+            continue
+
         links_vistos.add(link)
 
-        preco = preco_rich_snippet(item)
+        marca = identificar_marca(
+            titulo
+        )
+
+        preco = preco_rich_snippet(
+            item
+        )
 
         if preco is None:
-            preco = preco_snippet(trecho)
+            precos_texto = extrair_precos_texto(
+                trecho
+            )
 
-        marca = identificar_marca(titulo)
+            if precos_texto:
+                preco = max(precos_texto)
 
-        status = "NORMAL"
-
-        if preco and marca in LIMITES:
-
-            limite = LIMITES[marca]
-
-            if preco <= limite * 0.80:
-                status = "🔥 PREÇO MUITO BOM"
-
-            elif preco <= limite:
-                status = "✅ PREÇO INTERESSANTE"
+        desconto = detectar_desconto(
+            trecho,
+            preco
+        )
 
         resultados.append({
             "titulo": titulo,
             "marca": marca,
             "preco": preco,
-            "status": status,
-            "link": link
+            "desconto": desconto,
+            "link": link,
+            "trecho": trecho
         })
 
 
-# Primeiro aparecem os melhores
+ofertas = []
+
+
+for item in resultados:
+
+    preco = item["preco"]
+    marca = item["marca"]
+    desconto = item["desconto"]
+
+    media = calcular_media_mercado(
+        item,
+        resultados
+    )
+
+    item["media_mercado"] = media
+    item["status"] = None
+
+    # Regra 1:
+    # desconto real >= 15%
+    if desconto is not None and desconto >= 15:
+        item["status"] = "🔥 DESCONTO >= 15%"
+
+    # Regra 2:
+    # Mini GT abaixo de R$150
+    elif (
+        marca == "Mini GT"
+        and preco is not None
+        and preco < 150
+    ):
+        item["status"] = "🔥 MINI GT ABAIXO DE R$150"
+
+    # Regra 3:
+    # demais abaixo da mediana
+    elif (
+        media is not None
+        and preco is not None
+        and preco <= media * 0.85
+    ):
+        item["status"] = "🔥 ABAIXO DO MERCADO"
+
+    elif (
+        media is not None
+        and preco is not None
+        and preco < media
+    ):
+        item["status"] = "✅ BOM PREÇO"
+
+    if item["status"]:
+        ofertas.append(item)
+
+
 ordem = {
-    "🔥 PREÇO MUITO BOM": 0,
-    "✅ PREÇO INTERESSANTE": 1,
-    "NORMAL": 2
+    "🔥 DESCONTO >= 15%": 0,
+    "🔥 MINI GT ABAIXO DE R$150": 1,
+    "🔥 ABAIXO DO MERCADO": 2,
+    "✅ BOM PREÇO": 3
 }
 
-resultados.sort(
+
+ofertas.sort(
     key=lambda x: (
-        ordem[x["status"]],
+        ordem.get(x["status"], 99),
         x["preco"] if x["preco"] else 999999
     )
 )
 
 
-print("\nCARRINHOS ENCONTRADOS:", len(resultados))
+print()
+print(
+    "OFERTAS ENCONTRADAS:",
+    len(ofertas)
+)
 print()
 
 
-for item in resultados[:40]:
+for item in ofertas[:50]:
 
     print(item["status"])
     print("MARCA:", item["marca"])
     print("TITULO:", item["titulo"])
 
-    if item["preco"]:
-        print(f"PRECO: R$ {item['preco']:.2f}")
-    else:
-        print("PRECO: não identificado")
+    if item["preco"] is not None:
+        print(
+            f"PRECO: R$ {item['preco']:.2f}"
+        )
+
+    if item["desconto"] is not None:
+        print(
+            f"DESCONTO: "
+            f"{item['desconto']:.1f}%"
+        )
+
+    if item["media_mercado"] is not None:
+        print(
+            f"PRECO MEDIANO ENCONTRADO: "
+            f"R$ {item['media_mercado']:.2f}"
+        )
 
     print("LINK:", item["link"])
     print("-" * 80)
