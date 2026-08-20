@@ -1,10 +1,23 @@
 import os
 import re
-import statistics
+import json
+from pathlib import Path
 import requests
+
+
+# =========================================================
+# CONFIGURAÇÕES
+# =========================================================
 
 API_KEY = os.getenv("SERPAPI_KEY")
 URL = "https://serpapi.com/search.json"
+
+ARQUIVO_HISTORICO = Path("ofertas_vistas.json")
+
+
+# =========================================================
+# CARROS DE INTERESSE
+# =========================================================
 
 CARROS_TOP = [
     "Ferrari",
@@ -30,6 +43,11 @@ CARROS_TOP = [
     "Corvette"
 ]
 
+
+# =========================================================
+# TENDÊNCIAS / MODELOS DE INTERESSE
+# =========================================================
+
 TENDENCIAS_QUENTES = [
     ("Ferrari F40 RLC", ["ferrari", "f40", "rlc"]),
     ("Ferrari Testarossa", ["ferrari", "testarossa"]),
@@ -37,11 +55,13 @@ TENDENCIAS_QUENTES = [
     ("Ferrari Enzo", ["ferrari", "enzo"]),
     ("Ferrari 499P", ["ferrari", "499p"]),
     ("Ferrari F50", ["ferrari", "f50"]),
+
     ("Porsche 993 GT2", ["porsche", "993", "gt2"]),
     ("Porsche 917K", ["porsche", "917k"]),
     ("Porsche Carrera GT", ["porsche", "carrera", "gt"]),
     ("Porsche 911 Carrera RS", ["porsche", "911", "carrera", "rs"]),
     ("Porsche 911 GT3 RS", ["porsche", "911", "gt3", "rs"]),
+
     ("Nissan Skyline BNR32", ["nissan", "skyline", "bnr32"]),
     ("NISMO 270R", ["nismo", "270r"]),
     ("Toyota Supra VeilSide", ["toyota", "supra", "veilside"]),
@@ -52,27 +72,66 @@ TENDENCIAS_QUENTES = [
     ("Koenigsegg Agera RS", ["koenigsegg", "agera", "rs"])
 ]
 
+
+# =========================================================
+# BUSCAS
+# =========================================================
+
 BUSCAS = [
-    'site:mercadolivre.com.br "Hot Wheels Premium" ("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR "BMW" OR "Mercedes" OR "Audi") ("R$ 49" OR "R$ 55" OR "R$ 59" OR "R$ 65" OR "R$ 69" OR oferta OR desconto) -usado',
 
-    'site:mercadolivre.com.br ("Hot Wheels Car Culture" OR "Hot Wheels Boulevard" OR "Hot Wheels Silver Series" OR "Hot Wheels Pop Culture") ("Ferrari" OR "Porsche" OR "Skyline" OR "Supra" OR "RX-7") ("R$ 49" OR "R$ 59" OR "R$ 69" OR oferta) -usado',
+    'site:mercadolivre.com.br "Hot Wheels Premium" '
+    '("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR '
+    '"BMW" OR "Mercedes" OR "Audi") '
+    '("R$ 49" OR "R$ 55" OR "R$ 59" OR "R$ 65" OR "R$ 69" '
+    'OR oferta OR desconto) '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" "Ferrari" -usado',
+    'site:mercadolivre.com.br '
+    '("Hot Wheels Car Culture" OR "Hot Wheels Boulevard" OR '
+    '"Hot Wheels Silver Series" OR "Hot Wheels Pop Culture") '
+    '("Ferrari" OR "Porsche" OR "Skyline" OR "Supra" OR "RX-7") '
+    '("R$ 49" OR "R$ 59" OR "R$ 69" OR oferta) '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" "Porsche" -usado',
+    'site:mercadolivre.com.br "Hot Wheels Premium" "Ferrari" '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" ("Skyline" OR "Supra" OR "RX-7") -usado',
+    'site:mercadolivre.com.br "Hot Wheels Premium" "Porsche" '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Mini GT" ("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR "Skyline" OR "GT-R" OR "Supra" OR "RX-7") -usado',
+    'site:mercadolivre.com.br "Hot Wheels Premium" '
+    '("Skyline" OR "Supra" OR "RX-7") '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Mini GT" ("R$ 99" OR "R$ 109" OR "R$ 119" OR "R$ 129" OR "R$ 139" OR "R$ 149") -usado',
+    'site:mercadolivre.com.br "Mini GT" '
+    '("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR '
+    '"Skyline" OR "GT-R" OR "Supra" OR "RX-7") '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Kaido House" ("oferta" OR desconto OR promoção) -usado',
+    'site:mercadolivre.com.br "Mini GT" '
+    '("R$ 99" OR "R$ 109" OR "R$ 119" OR '
+    '"R$ 129" OR "R$ 139" OR "R$ 149") '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br "Tarmac Works" ("oferta" OR desconto OR promoção) -usado',
+    'site:mercadolivre.com.br "Kaido House" '
+    '("oferta" OR desconto OR promoção) '
+    '-usado -loose',
 
-    'site:mercadolivre.com.br ("Pop Race" OR "Inno64" OR "Greenlight" OR "M2 Machines" OR "Tomica Premium" OR "Majorette Premium") ("oferta" OR desconto OR promoção) -usado'
+    'site:mercadolivre.com.br "Tarmac Works" '
+    '("oferta" OR desconto OR promoção) '
+    '-usado -loose',
+
+    'site:mercadolivre.com.br '
+    '("Pop Race" OR "Inno64" OR "Greenlight" OR '
+    '"M2 Machines" OR "Tomica Premium" OR "Majorette Premium") '
+    '("oferta" OR desconto OR promoção) '
+    '-usado -loose'
 ]
+
+
+# =========================================================
+# FILTROS
+# =========================================================
 
 PALAVRAS_EXCLUIR = [
     "expositor",
@@ -87,8 +146,17 @@ PALAVRAS_EXCLUIR = [
     "case",
     "caixa organizadora",
     "suporte",
-    "protetor blister"
+    "protetor blister",
+
+    # Produtos usados/abertos
+    "usado",
+    "loose",
+    "aberto",
+    "sem blister",
+    "sem embalagem",
+    "avariado"
 ]
+
 
 HOT_WHEELS_PERMITIDOS = [
     "premium",
@@ -107,6 +175,7 @@ HOT_WHEELS_PERMITIDOS = [
     "aniversario"
 ]
 
+
 FAIXAS_VALIDAS = {
     "Hot Wheels": (20, 1000),
     "Matchbox": (20, 600),
@@ -122,33 +191,100 @@ FAIXAS_VALIDAS = {
 }
 
 
+# =========================================================
+# HISTÓRICO
+# =========================================================
+
+def carregar_historico():
+
+    if not ARQUIVO_HISTORICO.exists():
+        return {}
+
+    try:
+
+        with open(
+            ARQUIVO_HISTORICO,
+            "r",
+            encoding="utf-8"
+        ) as arquivo:
+
+            return json.load(arquivo)
+
+    except Exception as erro:
+
+        print(
+            "AVISO: não foi possível carregar histórico:",
+            erro
+        )
+
+        return {}
+
+
+def salvar_historico(historico):
+
+    with open(
+        ARQUIVO_HISTORICO,
+        "w",
+        encoding="utf-8"
+    ) as arquivo:
+
+        json.dump(
+            historico,
+            arquivo,
+            ensure_ascii=False,
+            indent=2
+        )
+
+
+# =========================================================
+# FUNÇÕES
+# =========================================================
+
 def texto_normalizado(texto):
-    return re.sub(r'\s+', ' ', (texto or "").lower()).strip()
+
+    return re.sub(
+        r'\s+',
+        ' ',
+        (texto or "").lower()
+    ).strip()
 
 
 def identificar_marca(titulo, link):
-    combinado = texto_normalizado(f"{titulo} {link}")
+
+    combinado = texto_normalizado(
+        f"{titulo} {link}"
+    )
 
     if "kaido house" in combinado:
         return "Kaido House"
+
     if "mini gt" in combinado:
         return "Mini GT"
+
     if "tarmac works" in combinado:
         return "Tarmac Works"
+
     if "pop race" in combinado:
         return "Pop Race"
+
     if "inno64" in combinado or "inno 64" in combinado:
         return "Inno64"
+
     if "matchbox" in combinado:
         return "Matchbox"
+
     if "hot wheels" in combinado:
         return "Hot Wheels"
+
     if "majorette" in combinado:
         return "Majorette"
+
     if "greenlight" in combinado:
         return "Greenlight"
+
     if "m2 machines" in combinado:
         return "M2 Machines"
+
     if "tomica" in combinado:
         return "Tomica"
 
@@ -156,44 +292,78 @@ def identificar_marca(titulo, link):
 
 
 def identificar_carros_top(titulo):
+
     t = texto_normalizado(titulo)
-    return [carro for carro in CARROS_TOP if carro.lower() in t]
+
+    encontrados = []
+
+    for carro in CARROS_TOP:
+
+        if carro.lower() in t:
+            encontrados.append(carro)
+
+    return encontrados
 
 
 def identificar_tendencia(titulo):
+
     t = texto_normalizado(titulo)
 
     for nome, termos in TENDENCIAS_QUENTES:
-        if all(termo.lower() in t for termo in termos):
+
+        if all(
+            termo.lower() in t
+            for termo in termos
+        ):
             return nome
 
     return None
 
 
 def link_valido(link):
+
     formatos = [
         "/p/",
         "/up/",
         "produto.mercadolivre.com.br/MLB-"
     ]
-    return bool(link) and any(f in link for f in formatos)
+
+    return (
+        bool(link)
+        and any(
+            formato in link
+            for formato in formatos
+        )
+    )
 
 
 def deve_excluir(titulo):
+
     t = texto_normalizado(titulo)
-    return any(p in t for p in PALAVRAS_EXCLUIR)
+
+    return any(
+        palavra in t
+        for palavra in PALAVRAS_EXCLUIR
+    )
 
 
 def hot_wheels_valido(titulo, link):
-    combinado = texto_normalizado(f"{titulo} {link}")
+
+    combinado = texto_normalizado(
+        f"{titulo} {link}"
+    )
 
     if "hot wheels" not in combinado:
         return True
 
-    return any(p in combinado for p in HOT_WHEELS_PERMITIDOS)
+    return any(
+        palavra in combinado
+        for palavra in HOT_WHEELS_PERMITIDOS
+    )
 
 
 def preco_valido(marca, preco):
+
     if preco is None:
         return False
 
@@ -201,18 +371,31 @@ def preco_valido(marca, preco):
         return True
 
     minimo, maximo = FAIXAS_VALIDAS[marca]
+
     return minimo <= preco <= maximo
 
 
 def extrair_precos_texto(texto):
-    valores = re.findall(r'R\$\s*([\d\.]+,\d{2})', texto or "")
+
+    valores = re.findall(
+        r'R\$\s*([\d\.]+,\d{2})',
+        texto or ""
+    )
+
     precos = []
 
     for valor in valores:
+
         try:
-            precos.append(
-                float(valor.replace(".", "").replace(",", "."))
+
+            numero = float(
+                valor
+                .replace(".", "")
+                .replace(",", ".")
             )
+
+            precos.append(numero)
+
         except:
             pass
 
@@ -220,25 +403,45 @@ def extrair_precos_texto(texto):
 
 
 def preco_rich_snippet(item):
-    rich = item.get("rich_snippet", {})
 
-    for posicao in ["top", "bottom"]:
+    rich = item.get(
+        "rich_snippet",
+        {}
+    )
+
+    for posicao in [
+        "top",
+        "bottom"
+    ]:
+
         detected = rich.get(
-            posicao, {}
-        ).get("detected_extensions", {})
+            posicao,
+            {}
+        ).get(
+            "detected_extensions",
+            {}
+        )
 
-        preco = detected.get("price")
+        preco = detected.get(
+            "price"
+        )
 
         if preco is not None:
+
             try:
                 return float(preco)
+
             except:
                 pass
 
     return None
 
 
-def detectar_desconto(trecho, preco_atual):
+def detectar_desconto(
+    trecho,
+    preco_atual
+):
+
     if not preco_atual:
         return None
 
@@ -249,6 +452,7 @@ def detectar_desconto(trecho, preco_atual):
     ]
 
     for padrao in padroes:
+
         resultado = re.search(
             padrao,
             trecho or "",
@@ -256,26 +460,45 @@ def detectar_desconto(trecho, preco_atual):
         )
 
         if resultado:
-            percentual = float(resultado.group(1))
+
+            percentual = float(
+                resultado.group(1)
+            )
+
             if 0 < percentual <= 80:
                 return percentual
 
-    precos = extrair_precos_texto(trecho)
+
+    precos = extrair_precos_texto(
+        trecho
+    )
 
     candidatos = [
-        p for p in precos
-        if preco_atual < p <= preco_atual * 2.5
+        preco
+        for preco in precos
+        if (
+            preco_atual < preco
+            <= preco_atual * 2.5
+        )
     ]
 
     if not candidatos:
         return None
 
-    preco_anterior = max(candidatos)
+
+    preco_anterior = max(
+        candidatos
+    )
+
 
     desconto = (
-        (preco_anterior - preco_atual)
+        (
+            preco_anterior
+            - preco_atual
+        )
         / preco_anterior
     ) * 100
+
 
     if 5 <= desconto <= 80:
         return desconto
@@ -283,175 +506,556 @@ def detectar_desconto(trecho, preco_atual):
     return None
 
 
+# =========================================================
+# EXECUTAR BUSCAS
+# =========================================================
+
 links_vistos = set()
+
 resultados = []
 
-for numero, busca in enumerate(BUSCAS, start=1):
 
-    print(f"Executando busca {numero}/{len(BUSCAS)}...")
+for numero, busca in enumerate(
+    BUSCAS,
+    start=1
+):
+
+    print(
+        f"Executando busca "
+        f"{numero}/{len(BUSCAS)}..."
+    )
+
 
     parametros = {
+
         "engine": "google",
+
         "q": busca,
+
         "hl": "pt-br",
+
         "gl": "br",
+
         "num": 20,
+
         "api_key": API_KEY
     }
 
-    resposta = requests.get(
-        URL,
-        params=parametros,
-        timeout=30
-    )
+
+    try:
+
+        resposta = requests.get(
+            URL,
+            params=parametros,
+            timeout=30
+        )
+
+    except Exception as erro:
+
+        print(
+            "ERRO NA BUSCA:",
+            erro
+        )
+
+        continue
+
 
     if resposta.status_code != 200:
-        print("ERRO:", resposta.status_code)
+
+        print(
+            "ERRO:",
+            resposta.status_code
+        )
+
         continue
+
 
     dados = resposta.json()
 
-    for item in dados.get("organic_results", []):
 
-        titulo = item.get("title", "")
-        link = item.get("link", "")
-        trecho = item.get("snippet", "")
+    for item in dados.get(
+        "organic_results",
+        []
+    ):
+
+        titulo = item.get(
+            "title",
+            ""
+        )
+
+        link = item.get(
+            "link",
+            ""
+        )
+
+        trecho = item.get(
+            "snippet",
+            ""
+        )
+
 
         if not link_valido(link):
             continue
 
+
         if link in links_vistos:
             continue
+
 
         if deve_excluir(titulo):
             continue
 
-        if not hot_wheels_valido(titulo, link):
+
+        if not hot_wheels_valido(
+            titulo,
+            link
+        ):
             continue
 
-        links_vistos.add(link)
 
-        marca = identificar_marca(titulo, link)
+        links_vistos.add(
+            link
+        )
 
-        preco = preco_rich_snippet(item)
+
+        marca = identificar_marca(
+            titulo,
+            link
+        )
+
+
+        preco = preco_rich_snippet(
+            item
+        )
+
 
         if preco is None:
-            precos = extrair_precos_texto(trecho)
+
+            precos = extrair_precos_texto(
+                trecho
+            )
 
             validos = [
-                p for p in precos
-                if preco_valido(marca, p)
+                preco_encontrado
+                for preco_encontrado in precos
+                if preco_valido(
+                    marca,
+                    preco_encontrado
+                )
             ]
 
             if validos:
                 preco = validos[0]
 
-        if not preco_valido(marca, preco):
+
+        if not preco_valido(
+            marca,
+            preco
+        ):
             preco = None
+
 
         desconto = detectar_desconto(
             trecho,
             preco
         )
 
+
         resultados.append({
+
             "titulo": titulo,
+
             "marca": marca,
+
             "preco": preco,
+
             "desconto": desconto,
-            "carros_top": identificar_carros_top(titulo),
-            "tendencia": identificar_tendencia(titulo),
+
+            "carros_top":
+                identificar_carros_top(
+                    titulo
+                ),
+
+            "tendencia":
+                identificar_tendencia(
+                    titulo
+                ),
+
             "link": link
         })
 
 
+# =========================================================
+# CLASSIFICAR OFERTAS
+# =========================================================
+
 ofertas = []
+
 
 for item in resultados:
 
     preco = item["preco"]
+
     marca = item["marca"]
+
     desconto = item["desconto"]
+
 
     item["status"] = None
 
-    if desconto is not None and desconto >= 15:
-        item["status"] = "🔥🔥 DESCONTO DE 15% OU MAIS"
 
-    elif (
+    # -----------------------------------------
+    # HOT WHEELS PREMIUM / SILVER < R$69
+    # -----------------------------------------
+
+    if (
         marca == "Hot Wheels"
         and preco is not None
         and preco < 69
     ):
-        item["status"] = "🚨 HOT WHEELS PREMIUM ABAIXO DE R$69"
+
+        item["status"] = (
+            "🚨 HOT WHEELS PREMIUM/SILVER "
+            "ABAIXO DE R$69"
+        )
+
+
+    # -----------------------------------------
+    # DESCONTO >= 15%
+    # -----------------------------------------
+
+    elif (
+        desconto is not None
+        and desconto >= 15
+    ):
+
+        item["status"] = (
+            "🔥🔥 DESCONTO DE 15% OU MAIS"
+        )
+
+
+    # -----------------------------------------
+    # HOT WHEELS < R$99
+    # -----------------------------------------
 
     elif (
         marca == "Hot Wheels"
         and preco is not None
         and preco < 99
     ):
-        item["status"] = "🔥 HOT WHEELS PREMIUM ABAIXO DE R$99"
+
+        item["status"] = (
+            "🔥 HOT WHEELS PREMIUM/SILVER "
+            "ABAIXO DE R$99"
+        )
+
+
+    # -----------------------------------------
+    # MINI GT < R$150
+    # -----------------------------------------
 
     elif (
         marca == "Mini GT"
         and preco is not None
         and preco < 150
     ):
-        item["status"] = "🔥 MINI GT ABAIXO DE R$150"
+
+        item["status"] = (
+            "🔥 MINI GT ABAIXO DE R$150"
+        )
+
 
     if item["status"]:
         ofertas.append(item)
 
 
+# =========================================================
+# VERIFICAR HISTÓRICO
+# =========================================================
+
+historico = carregar_historico()
+
+ofertas_para_enviar = []
+
+
+for item in ofertas:
+
+    link = item["link"]
+
+    preco = item["preco"]
+
+
+    if preco is None:
+        continue
+
+
+    registro_anterior = historico.get(
+        link
+    )
+
+
+    # =====================================================
+    # OFERTA NUNCA VISTA
+    # =====================================================
+
+    if registro_anterior is None:
+
+        item["tipo_alerta"] = (
+            "NOVA_OFERTA"
+        )
+
+        ofertas_para_enviar.append(
+            item
+        )
+
+
+        historico[link] = {
+
+            "menor_preco": preco,
+
+            "titulo": item["titulo"],
+
+            "marca": item["marca"]
+        }
+
+        continue
+
+
+    # =====================================================
+    # OFERTA JÁ VISTA
+    # =====================================================
+
+    menor_preco_anterior = (
+        registro_anterior.get(
+            "menor_preco"
+        )
+    )
+
+
+    # =====================================================
+    # PREÇO CAIU
+    # =====================================================
+
+    if (
+        menor_preco_anterior is None
+        or preco < menor_preco_anterior
+    ):
+
+        item[
+            "preco_anterior_encontrado"
+        ] = menor_preco_anterior
+
+
+        item["tipo_alerta"] = (
+            "QUEDA_PRECO"
+        )
+
+
+        ofertas_para_enviar.append(
+            item
+        )
+
+
+        historico[link] = {
+
+            "menor_preco": preco,
+
+            "titulo": item["titulo"],
+
+            "marca": item["marca"]
+        }
+
+
+# =========================================================
+# SALVAR HISTÓRICO
+# =========================================================
+
+salvar_historico(
+    historico
+)
+
+
+# Agora só ficam ofertas novas ou que baixaram de preço
+
+ofertas = ofertas_para_enviar
+
+
+# =========================================================
+# ORDENAR
+# =========================================================
+
 ordem = {
-    "🚨 HOT WHEELS PREMIUM ABAIXO DE R$69": 0,
-    "🔥🔥 DESCONTO DE 15% OU MAIS": 1,
-    "🔥 HOT WHEELS PREMIUM ABAIXO DE R$99": 2,
-    "🔥 MINI GT ABAIXO DE R$150": 3
+
+    "🚨 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$69":
+        0,
+
+    "🔥🔥 DESCONTO DE 15% OU MAIS":
+        1,
+
+    "🔥 HOT WHEELS PREMIUM/SILVER ABAIXO DE R$99":
+        2,
+
+    "🔥 MINI GT ABAIXO DE R$150":
+        3
 }
 
+
 ofertas.sort(
+
     key=lambda x: (
-        ordem.get(x["status"], 99),
-        x["preco"] if x["preco"] else 999999
+
+        ordem.get(
+            x["status"],
+            99
+        ),
+
+        x["preco"]
+        if x["preco"]
+        else 999999
     )
 )
 
 
+# =========================================================
+# MOSTRAR RESULTADOS
+# =========================================================
+
 print()
-print("=" * 80)
-print("OFERTAS ENCONTRADAS:", len(ofertas))
-print("=" * 80)
+
+print(
+    "=" * 80
+)
+
+print(
+    "NOVAS OFERTAS / QUEDAS DE PREÇO:",
+    len(ofertas)
+)
+
+print(
+    "=" * 80
+)
+
 print()
+
 
 for item in ofertas:
 
-    print(item["status"])
-    print("MARCA DIECAST:", item["marca"])
 
-    if item["carros_top"]:
+    # =====================================================
+    # QUEDA DE PREÇO
+    # =====================================================
+
+    if (
+        item.get("tipo_alerta")
+        == "QUEDA_PRECO"
+    ):
+
         print(
-            "CARRO TOP:",
-            ", ".join(item["carros_top"])
+            "📉📉 PREÇO CAIU NOVAMENTE!"
         )
 
+        anterior = item.get(
+            "preco_anterior_encontrado"
+        )
+
+        if anterior is not None:
+
+            print(
+                f"ANTES ENCONTRADO: "
+                f"R$ {anterior:.2f}"
+            )
+
+            print(
+                f"AGORA: "
+                f"R$ {item['preco']:.2f}"
+            )
+
+        print()
+
+
+    # =====================================================
+    # NOVA OFERTA
+    # =====================================================
+
+    else:
+
+        print(
+            "🆕 NOVA OFERTA ENCONTRADA"
+        )
+
+
+    print(
+        item["status"]
+    )
+
+
+    print(
+        "MARCA DIECAST:",
+        item["marca"]
+    )
+
+
+    if item["carros_top"]:
+
+        print(
+            "CARRO TOP:",
+            ", ".join(
+                item["carros_top"]
+            )
+        )
+
+
     if item["tendencia"]:
+
         print(
             "🔥 TENDENCIA:",
             item["tendencia"]
         )
 
-    print("TITULO:", item["titulo"])
+
+    print(
+        "TITULO:",
+        item["titulo"]
+    )
+
 
     if item["preco"] is not None:
+
         print(
-            f"PRECO: R$ {item['preco']:.2f}"
+            f"PRECO: "
+            f"R$ {item['preco']:.2f}"
         )
+
 
     if item["desconto"] is not None:
+
         print(
-            f"DESCONTO: {item['desconto']:.1f}%"
+            f"DESCONTO: "
+            f"{item['desconto']:.1f}%"
         )
 
-    print("LINK:", item["link"])
-    print("-" * 80)
+
+    print(
+        "LINK:",
+        item["link"]
+    )
+
+
+    print(
+        "-" * 80
+    )
+
+
+# =========================================================
+# RESUMO
+# =========================================================
+
+if len(ofertas) == 0:
+
+    print(
+        "Nenhuma oferta nova encontrada."
+    )
+
+    print(
+        "As ofertas já vistas foram ignoradas."
+    )
