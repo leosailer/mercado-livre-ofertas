@@ -1,25 +1,45 @@
-name: Testar Buscador Mercado Livre
+name: Buscador Diecast Automatico
 
 on:
   workflow_dispatch:
 
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: write
+
 jobs:
-  executar:
+  buscar:
     runs-on: ubuntu-latest
 
     steps:
       - name: Baixar projeto
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Instalar requests
+      - name: Instalar dependencias
         run: pip install requests
 
-      - name: Executar buscador
+      - name: Buscar ofertas
         env:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python main.py
+
+      - name: Salvar historico
+        run: |
+          git config user.name "Buscador Diecast"
+          git config user.email "actions@github.com"
+
+          git add ofertas_vistas.json
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteracao no historico"
+          else
+            git commit -m "Atualiza historico de ofertas"
+            git push
+          fi
