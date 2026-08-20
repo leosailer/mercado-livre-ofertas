@@ -4,16 +4,19 @@ on:
   workflow_dispatch:
 
   schedule:
-    # 08:00 até 11:30 no horário de Brasília
+    # 08:00 até 11:30 - Brasília
+    # A cada 30 minutos
     - cron: "0,30 11-14 * * *"
 
-    # 12:00 até 19:45 no horário de Brasília
+    # 12:00 até 19:45 - Brasília
+    # A cada 15 minutos
     - cron: "0,15,30,45 15-22 * * *"
 
-    # 20:00 até 22:45 no horário de Brasília
+    # 20:00 até 22:45 - Brasília
+    # A cada 15 minutos
     - cron: "0,15,30,45 23,0,1 * * *"
 
-    # 23:00 no horário de Brasília
+    # Última busca às 23:00 - Brasília
     - cron: "0 2 * * *"
 
 permissions:
@@ -35,9 +38,11 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests
 
-      - name: Buscar ofertas
+      - name: Buscar ofertas e enviar email
         env:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
         run: python main.py
 
       - name: Salvar historico e links
@@ -50,6 +55,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nenhuma alteracao para salvar"
           else
-            git commit -m "Atualiza ofertas e links para afiliado"
+            git commit -m "Atualiza ofertas e historico"
             git push
           fi
