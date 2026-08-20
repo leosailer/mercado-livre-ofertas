@@ -12,25 +12,49 @@ BUSCAS = [
     'site:mercadolivre.com.br ("Majorette" OR "Greenlight" OR "M2 Machines") ("1:64") -usado'
 ]
 
-url = "https://serpapi.com/search.json"
+URL = "https://serpapi.com/search.json"
+
+
+def preco_rich_snippet(item):
+    rich = item.get("rich_snippet", {})
+
+    for posicao in ["top", "bottom"]:
+        dados = rich.get(posicao, {}).get("detected_extensions", {})
+
+        preco = dados.get("price")
+        moeda = dados.get("currency")
+
+        if preco is not None:
+            try:
+                return float(preco), f"rich_snippet ({moeda or 'moeda não informada'})"
+            except:
+                pass
+
+    return None, None
+
+
+def preco_do_texto(texto):
+    valores = re.findall(r'R\$\s*([\d\.]+,\d{2})', texto)
+
+    precos = []
+
+    for valor in valores:
+        try:
+            numero = float(valor.replace(".", "").replace(",", "."))
+            precos.append(numero)
+        except:
+            pass
+
+    if not precos:
+        return None, None
+
+    # Evita pegar valores pequenos que normalmente são parcelas.
+    # Como fallback, usa o MAIOR valor em R$ encontrado no snippet.
+    return max(precos), "snippet"
+
 
 links_vistos = set()
-resultados_finais = []
-
-def extrair_preco(texto):
-    padrao = r'R\$\s?([\d\.]+,\d{2})'
-    encontrados = re.findall(padrao, texto)
-
-    if not encontrados:
-        return None
-
-    preco = encontrados[0]
-    preco = preco.replace(".", "").replace(",", ".")
-
-    try:
-        return float(preco)
-    except:
-        return None
+resultados = []
 
 for busca in BUSCAS:
 
@@ -43,7 +67,7 @@ for busca in BUSCAS:
         "api_key": API_KEY
     }
 
-    resposta = requests.get(url, params=parametros, timeout=30)
+    resposta = requests.get(URL, params=parametros, timeout=30)
 
     if resposta.status_code != 200:
         print("ERRO NA BUSCA:", resposta.status_code)
@@ -60,42 +84,48 @@ for busca in BUSCAS:
         if "lista.mercadolivre.com.br" in link:
             continue
 
-        if link in links_vistos:
+        if "mercadolivre.com.br" not in link:
             continue
 
-        if "mercadolivre.com.br" not in link:
+        if link in links_vistos:
             continue
 
         links_vistos.add(link)
 
-        preco = extrair_preco(trecho)
+        preco, fonte = preco_rich_snippet(item)
 
-        resultados_finais.append({
+        if preco is None:
+            preco, fonte = preco_do_texto(trecho)
+
+        resultados.append({
             "titulo": titulo,
             "link": link,
-            "trecho": trecho,
-            "preco": preco
+            "preco": preco,
+            "fonte": fonte,
+            "trecho": trecho
         })
 
-# Coloca primeiro os produtos que têm preço identificado
-resultados_finais.sort(
+
+resultados.sort(
     key=lambda x: (
         x["preco"] is None,
-        x["preco"] if x["preco"] is not None else 999999
+        x["preco"] if x["preco"] else 999999
     )
 )
 
-print("\nPRODUTOS ENCONTRADOS:", len(resultados_finais))
+print("\nPRODUTOS ENCONTRADOS:", len(resultados))
 print()
 
-for item in resultados_finais[:30]:
+for item in resultados[:30]:
 
     print("TITULO:", item["titulo"])
 
     if item["preco"] is not None:
-        print(f"PRECO IDENTIFICADO: R$ {item['preco']:.2f}")
+        print(f"PRECO: R$ {item['preco']:.2f}")
+        print("FONTE DO PRECO:", item["fonte"])
     else:
-        print("PRECO IDENTIFICADO: nao encontrado")
+        print("PRECO: não identificado")
 
     print("LINK:", item["link"])
+    print("TRECHO:", item["trecho"])
     print("-" * 80)
