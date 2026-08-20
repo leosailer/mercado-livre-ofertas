@@ -17,7 +17,9 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar requests
-        run: pip install requests beautifulsoup4
+        run: pip install requests
 
       - name: Executar buscador
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python main.py
