@@ -63,17 +63,14 @@ TENDENCIAS_QUENTES = [
     ("Ferrari Enzo", ["ferrari", "enzo"]),
     ("Ferrari 499P", ["ferrari", "499p"]),
     ("Ferrari F50", ["ferrari", "f50"]),
-
     ("Porsche 993 GT2", ["porsche", "993", "gt2"]),
     ("Porsche 917K", ["porsche", "917k"]),
     ("Porsche Carrera GT", ["porsche", "carrera", "gt"]),
     ("Porsche 911 Carrera RS", ["porsche", "911", "carrera", "rs"]),
     ("Porsche 911 GT3 RS", ["porsche", "911", "gt3", "rs"]),
-
     ("Nissan Skyline BNR32", ["nissan", "skyline", "bnr32"]),
     ("Nissan Skyline R33", ["nissan", "skyline", "r33"]),
     ("NISMO 270R", ["nismo", "270r"]),
-
     ("Toyota Supra VeilSide", ["toyota", "supra", "veilside"]),
     ("Lamborghini Countach", ["lamborghini", "countach"]),
     ("Mazda RX-7 RE-Amemiya", ["mazda", "rx-7", "re-amemiya"]),
@@ -203,7 +200,6 @@ FAIXAS_VALIDAS = {
 # =========================================================
 
 def carregar_historico():
-
     if not ARQUIVO_HISTORICO.exists():
         return {}
 
@@ -216,15 +212,11 @@ def carregar_historico():
             return json.load(arquivo)
 
     except Exception as erro:
-        print(
-            "AVISO: erro ao carregar histórico:",
-            erro
-        )
+        print("AVISO: erro ao carregar histórico:", erro)
         return {}
 
 
 def salvar_historico(historico):
-
     with open(
         ARQUIVO_HISTORICO,
         "w",
@@ -244,7 +236,6 @@ def salvar_historico(historico):
 # =========================================================
 
 def texto_normalizado(texto):
-
     return re.sub(
         r"\s+",
         " ",
@@ -253,41 +244,30 @@ def texto_normalizado(texto):
 
 
 def identificar_marca(titulo, link):
-
     combinado = texto_normalizado(
         f"{titulo} {link}"
     )
 
     if "kaido house" in combinado:
         return "Kaido House"
-
     if "mini gt" in combinado:
         return "Mini GT"
-
     if "tarmac works" in combinado:
         return "Tarmac Works"
-
     if "pop race" in combinado:
         return "Pop Race"
-
     if "inno64" in combinado or "inno 64" in combinado:
         return "Inno64"
-
     if "matchbox" in combinado:
         return "Matchbox"
-
     if "hot wheels" in combinado:
         return "Hot Wheels"
-
     if "majorette" in combinado:
         return "Majorette"
-
     if "greenlight" in combinado:
         return "Greenlight"
-
     if "m2 machines" in combinado:
         return "M2 Machines"
-
     if "tomica" in combinado:
         return "Tomica"
 
@@ -295,13 +275,11 @@ def identificar_marca(titulo, link):
 
 
 def identificar_carros_top(titulo):
-
     t = texto_normalizado(titulo)
 
     encontrados = []
 
     for carro in CARROS_TOP:
-
         if carro.lower() in t:
             encontrados.append(carro)
 
@@ -309,11 +287,9 @@ def identificar_carros_top(titulo):
 
 
 def identificar_tendencia(titulo):
-
     t = texto_normalizado(titulo)
 
     for nome, termos in TENDENCIAS_QUENTES:
-
         if all(
             termo.lower() in t
             for termo in termos
@@ -328,7 +304,6 @@ def identificar_tendencia(titulo):
 # =========================================================
 
 def link_valido(link):
-
     formatos = [
         "/p/",
         "/up/",
@@ -345,7 +320,6 @@ def link_valido(link):
 
 
 def deve_excluir(titulo):
-
     t = texto_normalizado(titulo)
 
     return any(
@@ -355,7 +329,6 @@ def deve_excluir(titulo):
 
 
 def hot_wheels_valido(titulo, link):
-
     combinado = texto_normalizado(
         f"{titulo} {link}"
     )
@@ -370,7 +343,6 @@ def hot_wheels_valido(titulo, link):
 
 
 def preco_valido(marca, preco):
-
     if preco is None:
         return False
 
@@ -387,7 +359,6 @@ def preco_valido(marca, preco):
 # =========================================================
 
 def extrair_precos_texto(texto):
-
     valores = re.findall(
         r"R\$\s*([\d\.]+,\d{2})",
         texto or ""
@@ -396,9 +367,7 @@ def extrair_precos_texto(texto):
     precos = []
 
     for valor in valores:
-
         try:
-
             numero = float(
                 valor
                 .replace(".", "")
@@ -414,7 +383,6 @@ def extrair_precos_texto(texto):
 
 
 def preco_rich_snippet(item):
-
     rich = item.get(
         "rich_snippet",
         {}
@@ -436,7 +404,6 @@ def preco_rich_snippet(item):
         preco = detected.get("price")
 
         if preco is not None:
-
             try:
                 return float(preco)
 
@@ -446,11 +413,7 @@ def preco_rich_snippet(item):
     return None
 
 
-def detectar_desconto(
-    trecho,
-    preco_atual
-):
-
+def detectar_desconto(trecho, preco_atual):
     if not preco_atual:
         return None
 
@@ -461,7 +424,6 @@ def detectar_desconto(
     ]
 
     for padrao in padroes:
-
         resultado = re.search(
             padrao,
             trecho or "",
@@ -469,7 +431,6 @@ def detectar_desconto(
         )
 
         if resultado:
-
             percentual = float(
                 resultado.group(1)
             )
@@ -513,7 +474,7 @@ def detectar_desconto(
 
 
 # =========================================================
-# FUNÇÃO DE ENVIO DE E-MAIL
+# ENVIO DE E-MAIL
 # =========================================================
 
 def enviar_mensagem_email(
@@ -522,20 +483,16 @@ def enviar_mensagem_email(
 ):
 
     if not EMAIL_DESTINO:
-
         print(
             "ERRO: EMAIL_DESTINO não configurado."
         )
-
         return False
 
 
     if not GMAIL_APP_PASSWORD:
-
         print(
             "ERRO: GMAIL_APP_PASSWORD não configurado."
         )
-
         return False
 
 
@@ -558,7 +515,7 @@ def enviar_mensagem_email(
         with smtplib.SMTP_SSL(
             "smtp.gmail.com",
             465,
-            context=context
+            context=contexto
         ) as servidor:
 
             servidor.login(
@@ -595,13 +552,11 @@ def enviar_mensagem_email(
 def enviar_email_ofertas(ofertas):
 
     if len(ofertas) == 1:
-
         assunto = (
             "🚨 Nova oferta Diecast encontrada!"
         )
 
     else:
-
         assunto = (
             f"🚨 {len(ofertas)} novas ofertas Diecast!"
         )
@@ -656,7 +611,6 @@ def enviar_email_ofertas(ofertas):
         corpo.append(
             item["status"]
         )
-
 
         corpo.append(
             f"Marca: {item['marca']}"
@@ -794,7 +748,6 @@ Assim que aparecer uma oferta nova ou uma queda de preço, você receberá outro
 # =========================================================
 
 links_vistos = set()
-
 resultados = []
 
 
@@ -1047,8 +1000,6 @@ for item in ofertas:
     )
 
 
-    # NOVA OFERTA
-
     if registro_anterior is None:
 
         item["tipo_alerta"] = (
@@ -1068,8 +1019,6 @@ for item in ofertas:
         )
     )
 
-
-    # PREÇO CAIU
 
     if (
         menor_preco_anterior is None
@@ -1234,11 +1183,6 @@ if ofertas_para_enviar:
             "como enviadas."
         )
 
-        print(
-            "Elas serão tentadas novamente "
-            "na próxima execução."
-        )
-
 
 # =========================================================
 # RESULTADO NO GITHUB
@@ -1264,7 +1208,6 @@ print()
 
 for item in ofertas_para_enviar:
 
-
     if (
         item.get("tipo_alerta")
         == "QUEDA_PRECO"
@@ -1286,7 +1229,6 @@ for item in ofertas_para_enviar:
                 f"ANTES: "
                 f"R$ {anterior:.2f}"
             )
-
 
             print(
                 f"AGORA: "
@@ -1354,7 +1296,6 @@ for item in ofertas_para_enviar:
         "LINK:",
         item["link"]
     )
-
 
     print(
         "-" * 80
