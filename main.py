@@ -7,7 +7,7 @@ url = "https://serpapi.com/search.json"
 
 parametros = {
     "engine": "google",
-    "q": 'site:mercadolivre.com.br iphone promoção',
+    "q": 'site:mercadolivre.com.br ("hot wheels" OR matchbox OR "mini gt" OR diecast OR "1:64") ("promoção" OR oferta OR desconto OR "R$")',
     "hl": "pt-br",
     "gl": "br",
     "num": 10,
