@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 
 API_KEY = os.getenv("SERPAPI_KEY")
@@ -15,6 +16,21 @@ url = "https://serpapi.com/search.json"
 
 links_vistos = set()
 resultados_finais = []
+
+def extrair_preco(texto):
+    padrao = r'R\$\s?([\d\.]+,\d{2})'
+    encontrados = re.findall(padrao, texto)
+
+    if not encontrados:
+        return None
+
+    preco = encontrados[0]
+    preco = preco.replace(".", "").replace(",", ".")
+
+    try:
+        return float(preco)
+    except:
+        return None
 
 for busca in BUSCAS:
 
@@ -41,31 +57,45 @@ for busca in BUSCAS:
         link = item.get("link", "")
         trecho = item.get("snippet", "")
 
-        # Ignora páginas gerais de pesquisa
         if "lista.mercadolivre.com.br" in link:
             continue
 
-        # Evita resultados repetidos
         if link in links_vistos:
             continue
 
-        # Só Mercado Livre
         if "mercadolivre.com.br" not in link:
             continue
 
         links_vistos.add(link)
 
+        preco = extrair_preco(trecho)
+
         resultados_finais.append({
             "titulo": titulo,
             "link": link,
-            "trecho": trecho
+            "trecho": trecho,
+            "preco": preco
         })
 
-print("\nOFERTAS / PRODUTOS ENCONTRADOS:", len(resultados_finais))
+# Coloca primeiro os produtos que têm preço identificado
+resultados_finais.sort(
+    key=lambda x: (
+        x["preco"] is None,
+        x["preco"] if x["preco"] is not None else 999999
+    )
+)
+
+print("\nPRODUTOS ENCONTRADOS:", len(resultados_finais))
 print()
 
 for item in resultados_finais[:30]:
+
     print("TITULO:", item["titulo"])
+
+    if item["preco"] is not None:
+        print(f"PRECO IDENTIFICADO: R$ {item['preco']:.2f}")
+    else:
+        print("PRECO IDENTIFICADO: nao encontrado")
+
     print("LINK:", item["link"])
-    print("TRECHO:", item["trecho"])
     print("-" * 80)
