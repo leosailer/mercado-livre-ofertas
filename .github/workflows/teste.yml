@@ -4,7 +4,17 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: "*/15 * * * *"
+    # 08:00 até 11:30 no horário de Brasília
+    - cron: "0,30 11-14 * * *"
+
+    # 12:00 até 19:45 no horário de Brasília
+    - cron: "0,15,30,45 15-22 * * *"
+
+    # 20:00 até 22:45 no horário de Brasília
+    - cron: "0,15,30,45 23,0,1 * * *"
+
+    # 23:00 no horário de Brasília
+    - cron: "0 2 * * *"
 
 permissions:
   contents: write
