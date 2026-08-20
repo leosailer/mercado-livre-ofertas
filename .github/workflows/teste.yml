@@ -17,7 +17,7 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar requests
-        run: pip install requests
+        run: pip install requests beautifulsoup4
 
       - name: Executar buscador
         run: python main.py
