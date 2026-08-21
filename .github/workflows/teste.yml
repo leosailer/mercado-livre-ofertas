@@ -4,20 +4,17 @@ on:
   workflow_dispatch:
 
   schedule:
-    # 08:00 até 11:30 - Brasília
-    # A cada 30 minutos
-    - cron: "0,30 11-14 * * *"
+    # 08:07 até 11:37 - a cada 30 minutos
+    - cron: "7,37 8-11 * * *"
+      timezone: "America/Sao_Paulo"
 
-    # 12:00 até 19:45 - Brasília
-    # A cada 15 minutos
-    - cron: "0,15,30,45 15-22 * * *"
+    # 12:07 até 22:52 - a cada 15 minutos
+    - cron: "7,22,37,52 12-22 * * *"
+      timezone: "America/Sao_Paulo"
 
-    # 20:00 até 22:45 - Brasília
-    # A cada 15 minutos
-    - cron: "0,15,30,45 23,0,1 * * *"
-
-    # Última busca às 23:00 - Brasília
-    - cron: "0 2 * * *"
+    # Última busca do dia às 23:07
+    - cron: "7 23 * * *"
+      timezone: "America/Sao_Paulo"
 
 permissions:
   contents: write
