@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import ssl
 import smtplib
 import requests
 import unicodedata
@@ -27,58 +28,101 @@ MAX_OFERTAS_EMAIL = 20
 
 
 # ============================================================
-# SOMENTE 2 BUSCAS POR EXECUÇÃO
-# ============================================================
-
-BUSCAS = [
-    (
-        'Hot Wheels Premium Car Culture Boulevard Silver Series '
-        'Modern Classics Japan Historics Race Day Ferrari Porsche '
-        'Skyline Supra RX-7 NSX'
-    ),
-
-    (
-        'Mini GT Kaido House Tarmac Works Pop Race Inno64 '
-        'Skyline Porsche Ferrari Honda Nissan BMW 1:64'
-    ),
-]
-
-
-# ============================================================
-# WHITELIST BRASILEIRA
+# ROTAÇÃO DE BUSCAS
 #
-# Qualquer loja que NÃO estiver aqui será descartada.
+# GitHub Actions trabalha em UTC.
+#
+# 11:00 UTC = 08:00 Brasil
+# 20:00 UTC = 17:00 Brasil
+#
+# Cada execução = somente 2 créditos SearchAPI.
+# ============================================================
+
+hora_utc = datetime.utcnow().hour
+
+
+if hora_utc < 16:
+
+    PERIODO = "MANHÃ"
+
+    BUSCAS = [
+
+        (
+            "Hot Wheels Premium Car Culture Modern Classics "
+            "Japan Historics Race Day Ferrari Porsche Skyline "
+            "Supra RX-7 Mercado Livre"
+        ),
+
+        (
+            "Hot Wheels Premium Boulevard Silver Series "
+            "Ferrari Porsche Skyline Supra BMW Nissan "
+            "Mercado Livre"
+        ),
+    ]
+
+else:
+
+    PERIODO = "TARDE"
+
+    BUSCAS = [
+
+        (
+            "Hot Wheels Premium Fast Furious Pop Culture "
+            "Vintage Racing Circuit Legends Thrill Climbers "
+            "Team Transport Mercado Livre"
+        ),
+
+        (
+            "Mini GT Kaido House Tarmac Works Pop Race Inno64 "
+            "Skyline Porsche Ferrari Supra Nissan Honda "
+            "Mercado Livre"
+        ),
+    ]
+
+
+# ============================================================
+# LOJAS BRASILEIRAS PERMITIDAS
+#
+# REGRA:
+# se a loja não estiver aqui, NÃO ENTRA.
 # ============================================================
 
 LOJAS_BRASIL = [
+
+    # Mercado Livre
     "mercado livre",
     "mercadolivre",
     "mercadolivre.com.br",
 
+    # Amazon Brasil
     "amazon.com.br",
     "amazon brasil",
 
-    "magalu",
-    "magazine luiza",
-
-    "casas bahia",
-
-    "ri happy",
-
+    # Shopee
     "shopee",
     "shopee brasil",
 
-    "americanas",
+    # Magalu
+    "magalu",
+    "magazine luiza",
 
-    "mercado car",
+    # Casas Bahia
+    "casas bahia",
+
+    # Ri Happy
+    "ri happy",
+
+    # Americanas
+    "americanas",
 ]
 
 
 # ============================================================
-# BLOQUEIO EXTRA
+# LOJAS INTERNACIONAIS / NÃO DESEJADAS
 # ============================================================
 
 LOJAS_PROIBIDAS = [
+
     "ebay",
     "aliexpress",
     "temu",
@@ -88,79 +132,149 @@ LOJAS_PROIBIDAS = [
     "dhgate",
 
     "boost gear",
+
     "carolinasdiecast",
     "carolina's diecast",
+
     "aussie hobbies",
+
     "awesomediecast",
+
     "1-64specialist",
     "1:64 specialist",
+
+    "top collectibles",
+
+    "japan booster",
+
+    "japan hobby",
+
+    "plaza japan",
+
+    "suruga",
+
+    "amiami",
 ]
 
 
 # ============================================================
-# LINHAS HOT WHEELS
+# TERMOS DE IMPORTAÇÃO
+# ============================================================
+
+TERMOS_IMPORTACAO = [
+
+    "produto internacional",
+
+    "compra internacional",
+
+    "envio internacional",
+
+    "international shipping",
+
+    "imported from",
+
+    "importado dos estados unidos",
+
+    "importado do japao",
+
+    "importado do japão",
+]
+
+
+# ============================================================
+# LINHAS HOT WHEELS QUE QUEREMOS
 # ============================================================
 
 SERIES_HW = [
+
     ("silver series", "Silver Series"),
 
     ("modern classics", "Modern Classics"),
+
     ("japan historics", "Japan Historics"),
+
     ("race day", "Race Day"),
+
     ("circuit legends", "Circuit Legends"),
+
     ("thrill climbers", "Thrill Climbers"),
+
     ("mountain drifters", "Mountain Drifters"),
+
     ("deutschland design", "Deutschland Design"),
+
     ("ronin run", "Ronin Run"),
+
     ("exotic envy", "Exotic Envy"),
+
     ("slide street", "Slide Street"),
+
     ("power trip", "Power Trip"),
+
     ("vintage racing", "Vintage Racing"),
 
     ("team transport", "Team Transport"),
+
     ("boulevard", "Boulevard"),
+
     ("pop culture", "Pop Culture"),
 
     ("fast & furious", "Fast & Furious"),
+
+    ("fast and furious", "Fast & Furious"),
+
     ("fast furious", "Fast & Furious"),
 
     ("elite 64", "Elite 64"),
+
     ("rlc", "RLC"),
 
     ("car culture", "Car Culture"),
+
     ("premium", "Premium"),
 ]
 
 
 # ============================================================
-# CARROS MAIS INTERESSANTES
+# MODELOS DE ALTO INTERESSE
 # ============================================================
 
 MODELOS_TOP = [
+
     "ferrari",
+
     "porsche",
 
     "skyline",
+
     "r32",
+
     "r33",
+
     "r34",
+
     "gt-r",
+
     "gtr",
 
     "supra",
 
     "rx-7",
+
     "rx7",
 
     "nsx",
 
     "lamborghini",
+
     "mclaren",
 
     "bmw",
+
     "audi",
 
     "civic",
+
     "s2000",
 
     "silvia",
@@ -172,12 +286,17 @@ MODELOS_TOP = [
     "911",
 
     "lancer",
+
     "evolution",
+
+    "mazda",
+
+    "nissan",
 ]
 
 
 # ============================================================
-# NORMALIZAÇÃO
+# NORMALIZAR TEXTO
 # ============================================================
 
 def normalizar(texto):
@@ -193,15 +312,16 @@ def normalizar(texto):
     )
 
     texto = "".join(
-        c for c in texto
-        if not unicodedata.combining(c)
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(caractere)
     )
 
     return texto
 
 
 # ============================================================
-# LOJA BRASILEIRA
+# VERIFICAR LOJA BRASILEIRA
 # ============================================================
 
 def loja_brasileira(item):
@@ -210,13 +330,36 @@ def loja_brasileira(item):
         item.get("seller", "")
     )
 
+    titulo = normalizar(
+        item.get("title", "")
+    )
+
+    combinado = vendedor + " " + titulo
+
     if not vendedor:
         return False
+
+    # ---------------------------------------------
+    # BLOQUEIO EXPLÍCITO
+    # ---------------------------------------------
 
     for proibida in LOJAS_PROIBIDAS:
 
         if normalizar(proibida) in vendedor:
             return False
+
+    # ---------------------------------------------
+    # BLOQUEIO DE IMPORTAÇÃO
+    # ---------------------------------------------
+
+    for termo in TERMOS_IMPORTACAO:
+
+        if normalizar(termo) in combinado:
+            return False
+
+    # ---------------------------------------------
+    # WHITELIST BR
+    # ---------------------------------------------
 
     for permitida in LOJAS_BRASIL:
 
@@ -227,18 +370,27 @@ def loja_brasileira(item):
 
 
 # ============================================================
-# PREÇO
+# PEGAR PREÇO REAL
 # ============================================================
 
 def pegar_preco(item):
 
-    valor = item.get("extracted_price")
+    valor = item.get(
+        "extracted_price"
+    )
 
-    if isinstance(valor, (int, float)):
+    if isinstance(
+        valor,
+        (int, float)
+    ):
+
         return float(valor)
 
     texto = str(
-        item.get("price", "")
+        item.get(
+            "price",
+            ""
+        )
     )
 
     texto = texto.replace(
@@ -256,17 +408,28 @@ def pegar_preco(item):
     if not match:
         return None
 
-    valor = match.group()
+    numero = match.group()
 
-    if "," in valor:
+    if "," in numero:
 
-        valor = valor.replace(".", "")
-        valor = valor.replace(",", ".")
+        numero = numero.replace(
+            ".",
+            ""
+        )
+
+        numero = numero.replace(
+            ",",
+            "."
+        )
 
     try:
-        return float(valor)
+
+        return float(
+            numero
+        )
 
     except:
+
         return None
 
 
@@ -287,6 +450,7 @@ def pegar_preco_original(item):
         valor,
         (int, float)
     ):
+
         return float(valor)
 
     texto = str(valor)
@@ -319,42 +483,64 @@ def pegar_preco_original(item):
         )
 
     try:
-        return float(numero)
+
+        return float(
+            numero
+        )
 
     except:
+
         return None
 
 
 # ============================================================
-# DESCONTO
+# CALCULAR DESCONTO REAL
 # ============================================================
 
-def desconto_real(preco, antigo):
+def desconto_real(
+    preco,
+    antigo
+):
 
-    if not preco or not antigo:
+    if not preco:
+        return 0
+
+    if not antigo:
         return 0
 
     if antigo <= preco:
         return 0
 
+    desconto = (
+        (antigo - preco)
+        /
+        antigo
+    ) * 100
+
     return round(
-        ((antigo - preco) / antigo) * 100,
+        desconto,
         1
     )
 
 
 # ============================================================
-# MARCA
+# IDENTIFICAR MARCA
 # ============================================================
 
 def identificar_marca(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     if "kaido house" in t:
         return "Kaido House"
 
-    if "mini gt" in t or "minigt" in t:
+    if (
+        "mini gt" in t
+        or
+        "minigt" in t
+    ):
         return "Mini GT"
 
     if "tarmac works" in t:
@@ -363,7 +549,11 @@ def identificar_marca(titulo):
     if "pop race" in t:
         return "Pop Race"
 
-    if "inno64" in t or "inno 64" in t:
+    if (
+        "inno64" in t
+        or
+        "inno 64" in t
+    ):
         return "Inno64"
 
     if "hot wheels" in t:
@@ -373,12 +563,14 @@ def identificar_marca(titulo):
 
 
 # ============================================================
-# SÉRIE
+# IDENTIFICAR SÉRIE HOT WHEELS
 # ============================================================
 
 def identificar_serie(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     for termo, nome in SERIES_HW:
 
@@ -394,9 +586,12 @@ def identificar_serie(titulo):
 
 def escala_errada(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
-    proibidas = [
+    escalas_proibidas = [
+
         "1:18",
         "1/18",
 
@@ -411,37 +606,58 @@ def escala_errada(titulo):
 
         "1:43",
         "1/43",
+
+        "1:48",
+        "1/48",
     ]
 
-    return any(
-        x in t
-        for x in proibidas
-    )
+    for escala in escalas_proibidas:
+
+        if escala in t:
+            return True
+
+    return False
 
 
 # ============================================================
-# KITS / LOTES
+# KIT / LOTE
 # ============================================================
 
 def kit_ou_lote(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     termos = [
+
         "set completo",
+
         "colecao completa",
+
         "kit com",
+
         "kit de",
+
         "lote",
+
         "pack com",
+
         "5 miniaturas",
+
         "10 miniaturas",
+
+        "20 miniaturas",
+
+        "caixa fechada",
     ]
 
-    return any(
-        normalizar(x) in t
-        for x in termos
-    )
+    for termo in termos:
+
+        if normalizar(termo) in t:
+            return True
+
+    return False
 
 
 # ============================================================
@@ -455,14 +671,36 @@ def produto_valido(item):
         ""
     )
 
-    if not loja_brasileira(item):
+    # ---------------------------------------------
+    # LOJA BR
+    # ---------------------------------------------
+
+    if not loja_brasileira(
+        item
+    ):
         return False
 
-    if escala_errada(titulo):
+    # ---------------------------------------------
+    # ESCALA
+    # ---------------------------------------------
+
+    if escala_errada(
+        titulo
+    ):
         return False
 
-    if kit_ou_lote(titulo):
+    # ---------------------------------------------
+    # KIT
+    # ---------------------------------------------
+
+    if kit_ou_lote(
+        titulo
+    ):
         return False
+
+    # ---------------------------------------------
+    # MARCA
+    # ---------------------------------------------
 
     marca = identificar_marca(
         titulo
@@ -470,6 +708,10 @@ def produto_valido(item):
 
     if not marca:
         return False
+
+    # ---------------------------------------------
+    # HOT WHEELS TEM QUE SER PREMIUM/SÉRIE
+    # ---------------------------------------------
 
     if marca == "Hot Wheels":
 
@@ -487,52 +729,91 @@ def produto_valido(item):
 # PREÇO MÁXIMO
 # ============================================================
 
-def preco_valido(marca, serie, preco):
+def preco_valido(
+    marca,
+    serie,
+    preco
+):
 
     if preco is None:
         return False
 
-    # Proteção contra parcela / preço quebrado
+    # ---------------------------------------------
+    # PROTEÇÃO CONTRA PARCELA
+    # ---------------------------------------------
+
     if preco < 20:
         return False
+
+    # ---------------------------------------------
+    # HOT WHEELS
+    # ---------------------------------------------
 
     if marca == "Hot Wheels":
 
         if serie == "Silver Series":
-            return preco <= 75
+
+            return preco <= 70
 
         if serie == "Team Transport":
-            return preco <= 170
+
+            return preco <= 160
 
         if serie in [
             "Elite 64",
             "RLC"
         ]:
+
             return preco <= 180
 
         # Premium normal
-        return preco <= 90
+        return preco <= 85
+
+    # ---------------------------------------------
+    # MINI GT
+    # ---------------------------------------------
 
     if marca == "Mini GT":
-        return preco <= 145
+
+        return preco <= 140
+
+    # ---------------------------------------------
+    # KAIDO
+    # ---------------------------------------------
 
     if marca == "Kaido House":
+
         return preco < 199
 
+    # ---------------------------------------------
+    # TARMAC
+    # ---------------------------------------------
+
     if marca == "Tarmac Works":
-        return preco <= 160
+
+        return preco <= 155
+
+    # ---------------------------------------------
+    # POP RACE
+    # ---------------------------------------------
 
     if marca == "Pop Race":
-        return preco <= 160
+
+        return preco <= 155
+
+    # ---------------------------------------------
+    # INNO64
+    # ---------------------------------------------
 
     if marca == "Inno64":
-        return preco <= 170
+
+        return preco <= 165
 
     return False
 
 
 # ============================================================
-# SCORE
+# SCORE DA OFERTA
 # ============================================================
 
 def calcular_score(oferta):
@@ -551,156 +832,285 @@ def calcular_score(oferta):
 
     desconto = oferta["desconto"]
 
-    # MODELO TOP
+    vendedor = normalizar(
+        oferta["vendedor"]
+    )
 
-    encontrou_top = False
+    # ========================================================
+    # MODELOS TOP
+    # ========================================================
+
+    modelo_top = False
 
     for modelo in MODELOS_TOP:
 
         if modelo in titulo:
 
-            score += 6
-            encontrou_top = True
+            score += 5
 
-    if encontrou_top:
+            modelo_top = True
+
+    if modelo_top:
+
         score += 5
 
+    # ========================================================
     # HOT WHEELS
+    # ========================================================
 
     if marca == "Hot Wheels":
 
         score += 10
 
+        # ---------------------------------------------
+        # LINHAS MAIS IMPORTANTES
+        # ---------------------------------------------
+
         if serie in [
+
             "Modern Classics",
+
             "Japan Historics",
+
             "Race Day",
+
             "Circuit Legends",
+
             "Thrill Climbers",
+
             "Mountain Drifters",
+
             "Deutschland Design",
+
             "Ronin Run",
+
             "Exotic Envy",
+
             "Slide Street",
+
             "Power Trip",
+
             "Vintage Racing",
+
         ]:
-            score += 15
+
+            score += 16
 
         elif serie == "Car Culture":
-            score += 14
 
-        elif serie == "Boulevard":
             score += 15
 
-        elif serie == "Fast & Furious":
-            score += 14
+        elif serie == "Boulevard":
 
-        elif serie == "Silver Series":
-            score += 8
+            score += 17
+
+        elif serie == "Fast & Furious":
+
+            score += 15
 
         elif serie == "Pop Culture":
+
+            score += 10
+
+        elif serie == "Silver Series":
+
             score += 8
 
         elif serie == "Team Transport":
+
             score += 8
 
+        elif serie in [
+            "Elite 64",
+            "RLC"
+        ]:
+
+            score += 15
+
+        elif serie == "Premium":
+
+            score += 8
+
+        # ====================================================
+        # PREÇO HOT WHEELS
+        # ====================================================
+
         if preco <= 50:
-            score += 35
+
+            score += 45
+
+        elif preco <= 55:
+
+            score += 38
 
         elif preco <= 60:
-            score += 30
+
+            score += 32
+
+        elif preco <= 65:
+
+            score += 26
 
         elif preco <= 70:
-            score += 22
+
+            score += 18
+
+        elif preco <= 75:
+
+            score += 10
 
         elif preco <= 80:
-            score += 12
 
-        elif preco <= 90:
             score += 5
 
+        else:
+
+            score += 0
+
+    # ========================================================
     # MINI GT
+    # ========================================================
 
     elif marca == "Mini GT":
 
         score += 18
 
-        if preco <= 95:
-            score += 35
+        if preco <= 90:
+
+            score += 40
+
+        elif preco <= 100:
+
+            score += 32
 
         elif preco <= 110:
-            score += 28
 
-        elif preco <= 125:
-            score += 20
+            score += 25
 
-        elif preco <= 140:
+        elif preco <= 120:
+
+            score += 18
+
+        elif preco <= 130:
+
             score += 10
 
-    # KAIDO
+        else:
+
+            score += 4
+
+    # ========================================================
+    # KAIDO HOUSE
+    # ========================================================
 
     elif marca == "Kaido House":
 
         score += 22
 
         if preco <= 130:
-            score += 35
 
-        elif preco <= 150:
-            score += 28
+            score += 40
 
-        elif preco <= 170:
-            score += 18
+        elif preco <= 145:
 
-        elif preco < 199:
-            score += 8
+            score += 32
 
-    # OUTRAS
+        elif preco <= 160:
+
+            score += 24
+
+        elif preco <= 180:
+
+            score += 14
+
+        else:
+
+            score += 5
+
+    # ========================================================
+    # TARMAC / POP RACE / INNO
+    # ========================================================
 
     else:
 
         score += 15
 
         if preco <= 100:
-            score += 30
 
-        elif preco <= 125:
-            score += 20
+            score += 35
 
-        elif preco <= 150:
+        elif preco <= 115:
+
+            score += 27
+
+        elif preco <= 130:
+
+            score += 18
+
+        elif preco <= 145:
+
             score += 10
 
-    # DESCONTO REAL
+        else:
+
+            score += 4
+
+    # ========================================================
+    # DESCONTO
+    # ========================================================
 
     if desconto >= 30:
+
         score += 30
 
     elif desconto >= 20:
+
         score += 20
 
     elif desconto >= 15:
+
         score += 12
 
     elif desconto >= 10:
+
         score += 5
 
-    # MERCADO LIVRE GANHA PRIORIDADE
+    # ========================================================
+    # PRIORIDADE DE LOJA
+    # ========================================================
 
-    vendedor = normalizar(
-        oferta["vendedor"]
-    )
+    if (
+        "mercadolivre" in vendedor
+        or
+        "mercado livre" in vendedor
+    ):
 
-    if "mercado" in vendedor:
-        score += 15
+        # Mercado Livre é prioridade
+        score += 30
+
+        # HW Premium no Mercado Livre
+        if marca == "Hot Wheels":
+
+            score += 15
 
     elif "amazon" in vendedor:
+
         score += 10
 
     elif "magalu" in vendedor:
+
         score += 7
 
     elif "shopee" in vendedor:
+
+        score += 5
+
+    elif "casas bahia" in vendedor:
+
+        score += 5
+
+    elif "ri happy" in vendedor:
+
         score += 5
 
     return score
@@ -710,29 +1120,37 @@ def calcular_score(oferta):
 # CLASSIFICAÇÃO
 # ============================================================
 
-def classificacao(score):
+def classificar(score):
 
-    if score >= 70:
+    if score >= 80:
+
         return "🚨 IMPERDÍVEL"
 
-    if score >= 50:
+    if score >= 55:
+
         return "🔥 BOA OFERTA"
 
     return "👀 INTERESSANTE"
 
 
 # ============================================================
-# SEARCH API
+# BUSCAR GOOGLE SHOPPING
 # ============================================================
 
-def buscar(termo):
+def buscar_shopping(
+    termo
+):
 
     params = {
+
         "engine": "google_shopping",
+
         "q": termo,
 
         "gl": "br",
+
         "hl": "pt-br",
+
         "location": "Brazil",
 
         "condition": "new",
@@ -740,11 +1158,22 @@ def buscar(termo):
         "api_key": SEARCHAPI_KEY,
     }
 
-    resposta = requests.get(
-        SEARCH_URL,
-        params=params,
-        timeout=45
-    )
+    try:
+
+        resposta = requests.get(
+            SEARCH_URL,
+            params=params,
+            timeout=45
+        )
+
+    except Exception as erro:
+
+        print(
+            "ERRO DE CONEXÃO:",
+            erro
+        )
+
+        return []
 
     print(
         "STATUS SEARCHAPI:",
@@ -759,7 +1188,19 @@ def buscar(termo):
 
         return []
 
-    return resposta.json().get(
+    try:
+
+        dados = resposta.json()
+
+    except:
+
+        print(
+            "ERRO AO LER JSON."
+        )
+
+        return []
+
+    return dados.get(
         "shopping_results",
         []
     )
@@ -774,6 +1215,7 @@ def carregar_historico():
     if not os.path.exists(
         HISTORICO_ARQUIVO
     ):
+
         return {}
 
     try:
@@ -782,58 +1224,94 @@ def carregar_historico():
             HISTORICO_ARQUIVO,
             "r",
             encoding="utf-8"
-        ) as f:
+        ) as arquivo:
 
-            return json.load(f)
+            return json.load(
+                arquivo
+            )
 
     except:
+
         return {}
 
 
-def salvar_historico(historico):
+def salvar_historico(
+    historico
+):
 
     with open(
         HISTORICO_ARQUIVO,
         "w",
         encoding="utf-8"
-    ) as f:
+    ) as arquivo:
 
         json.dump(
             historico,
-            f,
+            arquivo,
             ensure_ascii=False,
             indent=2
         )
 
 
 # ============================================================
-# CHAVE ÚNICA
+# CHAVE DA OFERTA
 # ============================================================
 
-def chave(oferta):
+def chave_oferta(
+    oferta
+):
 
-    product_id = oferta.get(
+    produto_id = oferta.get(
         "product_id"
     )
 
-    if product_id:
-        return str(product_id)
+    if produto_id:
+
+        return str(
+            produto_id
+        )
 
     return normalizar(
         oferta["titulo"]
-        + "|"
-        + oferta["vendedor"]
+        +
+        "|"
+        +
+        oferta["vendedor"]
     )
 
 
 # ============================================================
-# EMAIL
+# FORMATAR PREÇO
 # ============================================================
 
-def enviar_email(ofertas, stats):
+def formatar_preco(
+    valor
+):
 
-    data = datetime.now().strftime(
+    return (
+        f"R$ {valor:.2f}"
+    ).replace(
+        ".",
+        ","
+    )
+
+
+# ============================================================
+# ENVIAR EMAIL
+# ============================================================
+
+def enviar_email(
+    ofertas,
+    estatisticas
+):
+
+    agora = datetime.now().strftime(
         "%d/%m/%Y %H:%M"
+    )
+
+    assunto = (
+        f"🏎️ {len(ofertas)} ofertas Diecast "
+        f"- {PERIODO}"
     )
 
     linhas = []
@@ -843,7 +1321,11 @@ def enviar_email(ofertas, stats):
     )
 
     linhas.append(
-        data
+        f"RODADA: {PERIODO}"
+    )
+
+    linhas.append(
+        agora
     )
 
     linhas.append(
@@ -853,6 +1335,7 @@ def enviar_email(ofertas, stats):
     if not ofertas:
 
         linhas.append("")
+
         linhas.append(
             "Nenhuma oferta nacional realmente boa encontrada."
         )
@@ -860,9 +1343,12 @@ def enviar_email(ofertas, stats):
     for oferta in ofertas:
 
         linhas.append("")
+
         linhas.append(
             oferta["classificacao"]
         )
+
+        linhas.append("")
 
         linhas.append(
             f"LOJA: {oferta['vendedor']}"
@@ -883,16 +1369,30 @@ def enviar_email(ofertas, stats):
         )
 
         linhas.append(
-            (
-                f"PREÇO: R$ "
-                f"{oferta['preco']:.2f}"
-            ).replace(
-                ".",
-                ","
+            "PREÇO: "
+            +
+            formatar_preco(
+                oferta["preco"]
             )
         )
 
-        if oferta["desconto"] > 0:
+        if oferta[
+            "preco_original"
+        ]:
+
+            linhas.append(
+                "PREÇO ANTERIOR: "
+                +
+                formatar_preco(
+                    oferta[
+                        "preco_original"
+                    ]
+                )
+            )
+
+        if oferta[
+            "desconto"
+        ] > 0:
 
             linhas.append(
                 f"DESCONTO: "
@@ -912,26 +1412,29 @@ def enviar_email(ofertas, stats):
         )
 
     linhas.append("")
-    linhas.append("=" * 70)
 
     linhas.append(
-        f"RESULTADOS ANALISADOS: "
-        f"{stats['analisados']}"
+        "=" * 70
     )
 
     linhas.append(
-        f"LOJAS NÃO BRASILEIRAS DESCARTADAS: "
-        f"{stats['lojas']}"
+        f"RESULTADOS ANALISADOS: "
+        f"{estatisticas['analisados']}"
+    )
+
+    linhas.append(
+        f"LOJAS DESCARTADAS: "
+        f"{estatisticas['lojas']}"
     )
 
     linhas.append(
         f"PRODUTOS DESCARTADOS: "
-        f"{stats['produtos']}"
+        f"{estatisticas['produtos']}"
     )
 
     linhas.append(
         f"PREÇOS DESCARTADOS: "
-        f"{stats['precos']}"
+        f"{estatisticas['precos']}"
     )
 
     linhas.append(
@@ -943,26 +1446,21 @@ def enviar_email(ofertas, stats):
         linhas
     )
 
-    assunto = (
-        f"🏎️ Diecast: "
-        f"{len(ofertas)} ofertas nacionais"
-    )
+    mensagem = MIMEMultipart()
 
-    msg = MIMEMultipart()
+    mensagem["From"] = EMAIL_DESTINO
 
-    msg["From"] = EMAIL_DESTINO
-    msg["To"] = EMAIL_DESTINO
-    msg["Subject"] = assunto
+    mensagem["To"] = EMAIL_DESTINO
 
-    msg.attach(
+    mensagem["Subject"] = assunto
+
+    mensagem.attach(
         MIMEText(
             corpo,
             "plain",
             "utf-8"
         )
     )
-
-    import ssl
 
     context = ssl.create_default_context()
 
@@ -980,11 +1478,11 @@ def enviar_email(ofertas, stats):
         servidor.sendmail(
             EMAIL_DESTINO,
             EMAIL_DESTINO,
-            msg.as_string()
+            mensagem.as_string()
         )
 
     print(
-        "📧 EMAIL ENVIADO."
+        "📧 EMAIL ENVIADO COM SUCESSO."
     )
 
 
@@ -994,22 +1492,41 @@ def enviar_email(ofertas, stats):
 
 def main():
 
-    print("=" * 80)
-    print("BUSCADOR DIECAST - MODO ECONÔMICO")
-    print("2 BUSCAS SEARCHAPI")
-    print("=" * 80)
+    print(
+        "=" * 80
+    )
+
+    print(
+        "BUSCADOR DIECAST - VERSÃO PREMIUM BR"
+    )
+
+    print(
+        f"RODADA: {PERIODO}"
+    )
+
+    print(
+        "BUSCAS SEARCHAPI: 2"
+    )
+
+    print(
+        "=" * 80
+    )
 
     candidatos = []
 
-    stats = {
+    estatisticas = {
+
         "analisados": 0,
+
         "lojas": 0,
+
         "produtos": 0,
+
         "precos": 0,
     }
 
     # ========================================================
-    # DUAS BUSCAS
+    # EXECUTAR AS 2 BUSCAS
     # ========================================================
 
     for numero, termo in enumerate(
@@ -1018,15 +1535,16 @@ def main():
     ):
 
         print()
+
         print(
-            f"BUSCA {numero}/2"
+            f"BUSCA {numero}/{len(BUSCAS)}"
         )
 
         print(
             termo
         )
 
-        resultados = buscar(
+        resultados = buscar_shopping(
             termo
         )
 
@@ -1035,24 +1553,44 @@ def main():
             len(resultados)
         )
 
-        stats["analisados"] += len(
+        estatisticas[
+            "analisados"
+        ] += len(
             resultados
         )
 
+        # ====================================================
+        # ANALISAR RESULTADOS
+        # ====================================================
+
         for item in resultados:
 
+            # ---------------------------------------------
             # LOJA
+            # ---------------------------------------------
 
-            if not loja_brasileira(item):
+            if not loja_brasileira(
+                item
+            ):
 
-                stats["lojas"] += 1
+                estatisticas[
+                    "lojas"
+                ] += 1
+
                 continue
 
+            # ---------------------------------------------
             # PRODUTO
+            # ---------------------------------------------
 
-            if not produto_valido(item):
+            if not produto_valido(
+                item
+            ):
 
-                stats["produtos"] += 1
+                estatisticas[
+                    "produtos"
+                ] += 1
+
                 continue
 
             titulo = item.get(
@@ -1072,7 +1610,9 @@ def main():
                 item
             )
 
+            # ---------------------------------------------
             # PREÇO
+            # ---------------------------------------------
 
             if not preco_valido(
                 marca,
@@ -1080,7 +1620,10 @@ def main():
                 preco
             ):
 
-                stats["precos"] += 1
+                estatisticas[
+                    "precos"
+                ] += 1
+
                 continue
 
             antigo = pegar_preco_original(
@@ -1092,7 +1635,20 @@ def main():
                 antigo
             )
 
+            link = (
+                item.get(
+                    "product_link"
+                )
+                or
+                item.get(
+                    "link"
+                )
+                or
+                ""
+            )
+
             oferta = {
+
                 "titulo": titulo,
 
                 "marca": marca,
@@ -1100,8 +1656,11 @@ def main():
                 "serie": serie,
 
                 "vendedor": (
-                    item.get("seller")
-                    or "Não informado"
+                    item.get(
+                        "seller"
+                    )
+                    or
+                    "Não informado"
                 ),
 
                 "preco": preco,
@@ -1110,11 +1669,7 @@ def main():
 
                 "desconto": desconto,
 
-                "link": (
-                    item.get("product_link")
-                    or item.get("link")
-                    or ""
-                ),
+                "link": link,
 
                 "product_id": item.get(
                     "product_id"
@@ -1125,14 +1680,18 @@ def main():
                 ),
             }
 
-            oferta["score"] = calcular_score(
+            oferta[
+                "score"
+            ] = calcular_score(
                 oferta
             )
 
             oferta[
                 "classificacao"
-            ] = classificacao(
-                oferta["score"]
+            ] = classificar(
+                oferta[
+                    "score"
+                ]
             )
 
             candidatos.append(
@@ -1140,55 +1699,82 @@ def main():
             )
 
     # ========================================================
-    # DEDUPLICAÇÃO
+    # REMOVER DUPLICADOS
     # ========================================================
 
     unicos = {}
 
     for oferta in candidatos:
 
-        k = chave(
+        chave = chave_oferta(
             oferta
         )
 
-        if k not in unicos:
+        existente = unicos.get(
+            chave
+        )
 
-            unicos[k] = oferta
+        if existente is None:
 
-        else:
+            unicos[
+                chave
+            ] = oferta
 
-            if (
-                oferta["preco"]
-                <
-                unicos[k]["preco"]
-            ):
+            continue
 
-                unicos[k] = oferta
+        # Se duplicou, mantém o menor preço
+
+        if (
+            oferta["preco"]
+            <
+            existente["preco"]
+        ):
+
+            unicos[
+                chave
+            ] = oferta
 
     ofertas = list(
         unicos.values()
     )
 
     # ========================================================
-    # REMOVER COISA FRACA
+    # REMOVER OFERTAS FRACAS
     # ========================================================
 
     ofertas = [
-        o
-        for o in ofertas
-        if o["score"] >= 35
+
+        oferta
+
+        for oferta in ofertas
+
+        if oferta[
+            "score"
+        ] >= 40
+
     ]
 
     # ========================================================
-    # RANKING
+    # ORDENAR
     # ========================================================
 
     ofertas.sort(
-        key=lambda o: (
-            -o["score"],
-            o["preco"]
+
+        key=lambda oferta: (
+
+            -oferta[
+                "score"
+            ],
+
+            oferta[
+                "preco"
+            ]
         )
     )
+
+    # ========================================================
+    # LIMITAR EMAIL
+    # ========================================================
 
     ofertas = ofertas[
         :MAX_OFERTAS_EMAIL
@@ -1196,6 +1782,10 @@ def main():
 
     # ========================================================
     # HISTÓRICO DIÁRIO
+    #
+    # TODO DIA RECOMEÇA.
+    # Portanto uma oferta encontrada ontem pode aparecer
+    # novamente hoje.
     # ========================================================
 
     hoje = datetime.now().strftime(
@@ -1209,20 +1799,39 @@ def main():
     ) != hoje:
 
         historico = {
+
             "data": hoje,
+
             "ofertas": {}
         }
 
     for oferta in ofertas:
 
+        chave = chave_oferta(
+            oferta
+        )
+
         historico[
             "ofertas"
         ][
-            chave(oferta)
+            chave
         ] = {
-            "titulo": oferta["titulo"],
-            "preco": oferta["preco"],
-            "score": oferta["score"],
+
+            "titulo": oferta[
+                "titulo"
+            ],
+
+            "preco": oferta[
+                "preco"
+            ],
+
+            "score": oferta[
+                "score"
+            ],
+
+            "loja": oferta[
+                "vendedor"
+            ],
         }
 
     salvar_historico(
@@ -1230,7 +1839,7 @@ def main():
     )
 
     # ========================================================
-    # LINKS
+    # ARQUIVO DE LINKS
     # ========================================================
 
     with open(
@@ -1242,81 +1851,120 @@ def main():
         for oferta in ofertas:
 
             arquivo.write(
-                oferta["titulo"]
-                + "\n"
+                oferta[
+                    "titulo"
+                ]
             )
 
             arquivo.write(
-                oferta["link"]
-                + "\n\n"
+                "\n"
+            )
+
+            arquivo.write(
+                oferta[
+                    "link"
+                ]
+            )
+
+            arquivo.write(
+                "\n\n"
             )
 
     # ========================================================
-    # TERMINAL
+    # RESULTADO NO GITHUB
     # ========================================================
 
     print()
-    print("=" * 80)
 
     print(
-        "OFERTAS NACIONAIS:",
-        len(ofertas)
+        "=" * 80
     )
 
-    print("=" * 80)
+    print(
+        "OFERTAS NACIONAIS SELECIONADAS:",
+        len(
+            ofertas
+        )
+    )
+
+    print(
+        "=" * 80
+    )
 
     for oferta in ofertas:
 
         print()
+
         print(
-            oferta["classificacao"]
+            oferta[
+                "classificacao"
+            ]
         )
 
         print(
             "LOJA:",
-            oferta["vendedor"]
+            oferta[
+                "vendedor"
+            ]
         )
 
         print(
             "MARCA:",
-            oferta["marca"]
+            oferta[
+                "marca"
+            ]
         )
 
         print(
             "SÉRIE:",
-            oferta["serie"]
+            oferta[
+                "serie"
+            ]
         )
 
         print(
             "TÍTULO:",
-            oferta["titulo"]
+            oferta[
+                "titulo"
+            ]
         )
 
         print(
             "PREÇO:",
-            (
-                f"R$ {oferta['preco']:.2f}"
-            ).replace(
-                ".",
-                ","
+            formatar_preco(
+                oferta[
+                    "preco"
+                ]
             )
         )
 
-        if oferta["desconto"]:
+        if oferta[
+            "desconto"
+        ]:
 
             print(
                 "DESCONTO:",
-                f"{oferta['desconto']}%"
+                str(
+                    oferta[
+                        "desconto"
+                    ]
+                )
+                +
+                "%"
             )
 
         print(
             "SCORE:",
-            oferta["score"]
+            oferta[
+                "score"
+            ]
         )
 
         print(
             "LINK:",
-            oferta["link"]
+            oferta[
+                "link"
+            ]
         )
 
         print(
@@ -1328,45 +1976,102 @@ def main():
     # ========================================================
 
     print()
+
     print(
-        "Enviando relatório..."
+        "Enviando relatório por e-mail..."
     )
 
-    enviar_email(
-        ofertas,
-        stats
-    )
+    try:
+
+        enviar_email(
+            ofertas,
+            estatisticas
+        )
+
+    except Exception as erro:
+
+        print(
+            "❌ ERRO AO ENVIAR EMAIL:"
+        )
+
+        print(
+            erro
+        )
+
+    # ========================================================
+    # RESUMO
+    # ========================================================
 
     print()
-    print("=" * 80)
+
+    print(
+        "=" * 80
+    )
+
+    print(
+        "RESUMO DA EXECUÇÃO"
+    )
+
+    print(
+        "=" * 80
+    )
+
+    print(
+        "PERÍODO:",
+        PERIODO
+    )
+
+    print(
+        "BUSCAS CONSUMIDAS:",
+        len(
+            BUSCAS
+        )
+    )
 
     print(
         "RESULTADOS ANALISADOS:",
-        stats["analisados"]
+        estatisticas[
+            "analisados"
+        ]
     )
 
     print(
         "LOJAS NÃO BRASILEIRAS DESCARTADAS:",
-        stats["lojas"]
+        estatisticas[
+            "lojas"
+        ]
     )
 
     print(
         "PRODUTOS DESCARTADOS:",
-        stats["produtos"]
+        estatisticas[
+            "produtos"
+        ]
     )
 
     print(
         "PREÇOS DESCARTADOS:",
-        stats["precos"]
+        estatisticas[
+            "precos"
+        ]
     )
 
     print(
         "OFERTAS ENVIADAS:",
-        len(ofertas)
+        len(
+            ofertas
+        )
     )
 
-    print("=" * 80)
+    print(
+        "=" * 80
+    )
 
+
+# ============================================================
+# EXECUTAR
+# ============================================================
 
 if __name__ == "__main__":
+
     main()
