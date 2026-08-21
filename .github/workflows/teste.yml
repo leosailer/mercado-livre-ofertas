@@ -12,7 +12,7 @@ on:
     - cron: "7,22,37,52 12-22 * * *"
       timezone: "America/Sao_Paulo"
 
-    # Última busca do dia às 23:07
+    # Última busca às 23:07
     - cron: "7 23 * * *"
       timezone: "America/Sao_Paulo"
 
@@ -47,7 +47,7 @@ jobs:
           git config user.name "Buscador Diecast"
           git config user.email "actions@github.com"
 
-          git add ofertas_vistas.json links_para_afiliado.txt
+          git add ofertas_vistas.json links_para_afiliado.txt links_amazon.txt
 
           if git diff --cached --quiet; then
             echo "Nenhuma alteracao para salvar"
