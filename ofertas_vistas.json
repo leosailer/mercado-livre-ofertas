@@ -143,15 +143,39 @@
     "marca": "Kaido House",
     "loja": "Mercado Livre",
     "ultima_data_enviada": "2026-08-21",
-    "menor_preco_dia": 212.79,
-    "menor_preco_historico": 212.79
+    "menor_preco_dia": 96.9,
+    "menor_preco_historico": 96.9
   },
   "https://www.mercadolivre.com.br/mini-gt-mazda-rx-7-lb-super-silhueta-990-vermelha/p/MLB59403404": {
     "titulo": "Mini GT Mazda Rx-7 LB-Super Silhueta #990 Vermelha",
     "marca": "Mini GT",
     "loja": "Mercado Livre",
     "ultima_data_enviada": "2026-08-21",
-    "menor_preco_dia": 136.8,
-    "menor_preco_historico": 136.8
+    "menor_preco_dia": 119.9,
+    "menor_preco_historico": 119.9
+  },
+  "https://www.mercadolivre.com.br/hot-wheels-silver-series-streets-japan-supra-civic-skyline/up/MLBU3219851607": {
+    "titulo": "Hot Wheels Silver Series Streets Japan Supra Civic Skyline",
+    "marca": "Hot Wheels",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 59.14,
+    "menor_preco_historico": 59.14
+  },
+  "https://www.mercadolivre.com.br/mini-gt-mclaren-750s-spider-belize-blue-812-164-tsm-cor-do-modelo-azul-marinho/p/MLB46089427": {
+    "titulo": "Mini Gt Mclaren 750s Spider Belize Blue #812 1/64 Tsm, cor do ...",
+    "marca": "Mini GT",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 149.63,
+    "menor_preco_historico": 149.63
+  },
+  "https://www.mercadolivre.com.br/honda-nsx-kaido-racing--kaido-house-mini-gt-164/up/MLBU3743207581": {
+    "titulo": "Honda Nsx Kaido Racing Kaido House Mini Gt 1/64",
+    "marca": "Kaido House",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 216.44,
+    "menor_preco_historico": 216.44
   }
 }
