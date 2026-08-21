@@ -26,9 +26,12 @@
     "menor_preco_historico": 59.9
   },
   "https://www.mercadolivre.com.br/carro-hot-wheels-boulevard-toyota-gr-supra-2021-para-colecao/p/MLB69747160": {
-    "menor_preco": 79.9,
     "titulo": "Carro Hot Wheels Boulevard Toyota GR Supra 2021 para ...",
-    "marca": "Hot Wheels"
+    "marca": "Hot Wheels",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 79.9,
+    "menor_preco_historico": 79.9
   },
   "https://www.mercadolivre.com.br/hot-wheels-silver-series-1968-vintage-club-71-porsche-911-azul-aco/p/MLB65283421": {
     "titulo": "Hot Wheels Silver Series 1968 Vintage Club 71 Porsche ...",
@@ -78,5 +81,37 @@
     "ultima_data_enviada": "2026-08-21",
     "menor_preco_dia": 240.0,
     "menor_preco_historico": 240.0
+  },
+  "https://www.mercadolivre.com.br/hot-wheels-car-culture-modern-classic-porsche-993-gt2-mattel/p/MLB72064385": {
+    "titulo": "Hot Wheels Car Culture Modern Classic Porsche 993 GT2 ...",
+    "marca": "Hot Wheels",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 26.33,
+    "menor_preco_historico": 26.33
+  },
+  "https://www.mercadolivre.com.br/carro-patrulha-nissan-skyline-tomica-164-auto-metal-collecc/p/MLB2090925359": {
+    "titulo": "Carro Patrulha Nissan Skyline Tomica 1:64 Auto Metal ...",
+    "marca": "Tomica",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 53.82,
+    "menor_preco_historico": 53.82
+  },
+  "https://www.mercadolivre.com.br/nissan-skyline-gtr-r34-brian-rapido-e-furioso-jada-132/p/MLB2047867235": {
+    "titulo": "Nissan Skyline Gtr R34 Brian Rápido E Furioso Jada 1:32",
+    "marca": "Outra",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 59.9,
+    "menor_preco_historico": 59.9
+  },
+  "https://www.mercadolivre.com.br/ferrari-testarossa-hot-wheels-premium-car-culture-2026-164/up/MLBU4016733230": {
+    "titulo": "Ferrari Testarossa Hot Wheels Premium Car Culture 2026 ...",
+    "marca": "Hot Wheels",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 82.0,
+    "menor_preco_historico": 82.0
   }
 }
