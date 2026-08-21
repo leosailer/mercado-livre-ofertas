@@ -7,11 +7,13 @@ headers = {
     "Authorization": f"Bearer {TOKEN}"
 }
 
-url = "https://api.mercadolibre.com/sites/MLB/search"
+url = "https://api.mercadolibre.com/products/search"
 
 params = {
+    "status": "active",
+    "site_id": "MLB",
     "q": "Hot Wheels Car Culture",
-    "limit": 10
+    "limit": 20
 }
 
 r = requests.get(
@@ -29,16 +31,13 @@ if r.status_code != 200:
 
 dados = r.json()
 
-resultados = dados.get("results", [])
-
-print("RESULTADOS:", len(resultados))
+print("TOTAL:", dados.get("paging", {}).get("total"))
+print("RESULTADOS:", len(dados.get("results", [])))
 print("=" * 80)
 
-for item in resultados:
-    print("ID:", item.get("id"))
-    print("TÍTULO:", item.get("title"))
-    print("PREÇO:", item.get("price"))
-    print("MOEDA:", item.get("currency_id"))
-    print("CONDIÇÃO:", item.get("condition"))
-    print("LINK:", item.get("permalink"))
+for produto in dados.get("results", []):
+    print("PRODUCT ID:", produto.get("id"))
+    print("NOME:", produto.get("name"))
+    print("STATUS:", produto.get("status"))
+    print("DOMÍNIO:", produto.get("domain_id"))
     print("-" * 80)
