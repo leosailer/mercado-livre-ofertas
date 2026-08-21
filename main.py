@@ -8,7 +8,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from email.message import EmailMessage
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
 
 import requests
 
@@ -30,34 +29,38 @@ ARQUIVO_AMAZON = Path("links_amazon.txt")
 FUSO_BRASIL = ZoneInfo("America/Sao_Paulo")
 HOJE = datetime.now(FUSO_BRASIL).date().isoformat()
 
+# Mudamos a lógica de preço/link.
+# Isso evita que o histórico quebrado das versões anteriores
+# esconda ofertas corretas nesta primeira execução.
+VERSAO_HISTORICO = "v3"
+
 
 # =========================================================
-# SÉRIES HOT WHEELS QUE QUEREMOS
+# HOT WHEELS - LINHAS/SÉRIES QUE QUEREMOS
 # =========================================================
 
 SERIES_HOT_WHEELS = [
 
-    # Premium
+    # PREMIUM
+    "premium",
     "car culture",
     "boulevard",
     "pop culture",
     "team transport",
 
-    # Fast & Furious premium
-    "premium fast & furious",
-    "fast & furious premium",
-    "premium fast and furious",
-    "fast and furious premium",
+    # FAST & FURIOUS
+    "fast & furious",
+    "fast and furious",
 
-    # Collector
+    # SILVER
+    "silver series",
+
+    # COLLECTOR
     "elite 64",
     "rlc",
     "red line club",
 
-    # Silver
-    "silver series",
-
-    # Subséries / mixes conhecidos
+    # CAR CULTURE / MIXES
     "modern classics",
     "japan historics",
     "race day",
@@ -78,8 +81,7 @@ SERIES_HOT_WHEELS = [
     "dragstrip demons",
     "drag strip demons",
 
-    # Outros sinais
-    "hot wheels premium",
+    # SINAIS PREMIUM
     "real riders",
     "metal/metal",
     "metal metal"
@@ -117,29 +119,24 @@ CARROS_TOP = [
 
 # =========================================================
 # BUSCAS
+#
+# Reduzi para buscas mais abrangentes.
+# Assim gastamos menos SerpApi por rodada.
 # =========================================================
 
 BUSCAS = [
 
     '"Hot Wheels Car Culture"',
 
-    '"Hot Wheels Modern Classics"',
-
-    '"Hot Wheels Japan Historics"',
-
-    '"Hot Wheels Boulevard"',
-
     '"Hot Wheels Silver Series"',
 
-    '"Hot Wheels Pop Culture" OR "Hot Wheels Fast Furious Premium"',
+    '"Hot Wheels Boulevard" "Hot Wheels Pop Culture"',
 
-    '"Hot Wheels" Ferrari Porsche Lamborghini Skyline Supra RX-7 premium',
+    '"Hot Wheels Team Transport" "Hot Wheels Fast Furious"',
 
-    '"Mini GT" Porsche Lamborghini McLaren Skyline GT-R Supra RX-7 BMW',
+    '"Hot Wheels Premium" Ferrari Porsche Lamborghini Skyline Supra RX-7',
 
-    '"Kaido House" Skyline Nissan Honda Datsun',
-
-    '"Tarmac Works" OR "Pop Race" OR "Inno64" Porsche Ferrari Skyline RX-7'
+    '"Mini GT" "Kaido House" "Tarmac Works" "Pop Race" "Inno64"'
 ]
 
 
@@ -186,10 +183,6 @@ TERMOS_INTERNACIONAIS = [
 ]
 
 
-# =========================================================
-# ESCALAS QUE NÃO QUEREMOS
-# =========================================================
-
 ESCALAS_PROIBIDAS = [
     "1:18",
     "1/18",
@@ -209,32 +202,21 @@ ESCALAS_PROIBIDAS = [
 # =========================================================
 # FAIXAS PLAUSÍVEIS
 #
-# Isso NÃO define oferta.
-# Serve apenas para eliminar valores absurdos.
+# NÃO definem promoção.
+# Só bloqueiam dado evidentemente absurdo.
 # =========================================================
 
 FAIXAS_VALIDAS = {
-
     "Hot Wheels": (35, 800),
-
     "Mini GT": (65, 500),
-
     "Kaido House": (100, 700),
-
     "Tarmac Works": (75, 700),
-
     "Pop Race": (75, 700),
-
     "Inno64": (75, 700),
-
     "Matchbox": (25, 500),
-
     "Majorette": (30, 400),
-
     "Greenlight": (45, 500),
-
     "M2 Machines": (50, 600),
-
     "Tomica": (35, 400)
 }
 
@@ -260,21 +242,14 @@ def identificar_loja(source):
 
     texto = normalizar(source)
 
-
     if (
         "mercado livre" in texto
         or "mercadolivre" in texto
     ):
-
         return "Mercado Livre"
 
-
-    if (
-        "amazon" in texto
-    ):
-
+    if "amazon" in texto:
         return "Amazon"
-
 
     return None
 
@@ -287,54 +262,41 @@ def identificar_marca(titulo):
 
     texto = normalizar(titulo)
 
-
     if "kaido house" in texto:
         return "Kaido House"
-
 
     if "mini gt" in texto:
         return "Mini GT"
 
-
     if "tarmac works" in texto:
         return "Tarmac Works"
 
-
     if "pop race" in texto:
         return "Pop Race"
-
 
     if (
         "inno64" in texto
         or "inno 64" in texto
     ):
-
         return "Inno64"
-
 
     if "matchbox" in texto:
         return "Matchbox"
 
-
     if "hot wheels" in texto:
         return "Hot Wheels"
-
 
     if "majorette" in texto:
         return "Majorette"
 
-
     if "greenlight" in texto:
         return "Greenlight"
-
 
     if "m2 machines" in texto:
         return "M2 Machines"
 
-
     if "tomica" in texto:
         return "Tomica"
-
 
     return None
 
@@ -352,57 +314,23 @@ def identificar_serie(
         f"{titulo} {snippet}"
     )
 
-
     for serie in SERIES_HOT_WHEELS:
 
         if serie in texto:
-
             return serie.title()
-
 
     return None
 
 
 # =========================================================
-# HOT WHEELS VÁLIDO
+# CARRO TOP
 # =========================================================
 
-def hot_wheels_valido(
-    titulo,
-    snippet=""
-):
-
-    texto = normalizar(
-        f"{titulo} {snippet}"
-    )
-
-
-    if "hot wheels" not in texto:
-
-        return True
-
-
-    return (
-        identificar_serie(
-            titulo,
-            snippet
-        )
-        is not None
-    )
-
-
-# =========================================================
-# CARROS TOP
-# =========================================================
-
-def identificar_carros_top(
-    titulo
-):
+def identificar_carros_top(titulo):
 
     texto = normalizar(titulo)
 
     encontrados = []
-
 
     for carro in CARROS_TOP:
 
@@ -411,7 +339,6 @@ def identificar_carros_top(
             encontrados.append(
                 carro
             )
-
 
     return encontrados
 
@@ -429,52 +356,41 @@ def escala_valida(
         f"{titulo} {snippet}"
     )
 
-
     for escala in ESCALAS_PROIBIDAS:
 
         if escala in texto:
-
             return False
-
 
     escalas = re.findall(
         r"\b1\s*[:/]\s*(\d{2})\b",
         texto
     )
 
-
     for escala in escalas:
 
         if escala != "64":
-
             return False
-
 
     return True
 
 
 # =========================================================
-# FILTRO NOVO / INTERNACIONAL
+# INTERNACIONAL / USADO
 # =========================================================
 
 def texto_produto_valido(texto):
 
     texto = normalizar(texto)
 
-
     for termo in TERMOS_PROIBIDOS:
 
         if termo in texto:
-
             return False
-
 
     for termo in TERMOS_INTERNACIONAIS:
 
         if termo in texto:
-
             return False
-
 
     return True
 
@@ -482,15 +398,10 @@ def texto_produto_valido(texto):
 # =========================================================
 # PREÇO SHOPPING
 #
-# IMPORTANTE:
-#
-# extracted_price pode, em alguns resultados,
-# ser exatamente o preço da parcela.
-#
-# Então verificamos installment.
+# Só para descobrir candidatos.
 # =========================================================
 
-def obter_preco_shopping(
+def preco_shopping_valido(
     item,
     marca
 ):
@@ -499,11 +410,8 @@ def obter_preco_shopping(
         "extracted_price"
     )
 
-
     if preco is None:
-
         return None
-
 
     try:
 
@@ -514,36 +422,13 @@ def obter_preco_shopping(
         return None
 
 
-    # -----------------------------------------------------
-    # MOEDA
-    # -----------------------------------------------------
-
-    preco_texto = str(
-        item.get(
-            "price",
-            ""
-        )
-    ).upper()
-
-
-    if preco_texto:
-
-        if (
-            "R$" not in preco_texto
-            and "BRL" not in preco_texto
-        ):
-
-            return None
-
-
-    # -----------------------------------------------------
-    # DETECTA SE extracted_price É PARCELA
-    # -----------------------------------------------------
+    # =====================================================
+    # NÃO ACEITA extracted_price SE FOR A PARCELA
+    # =====================================================
 
     installment = item.get(
         "installment"
     )
-
 
     if isinstance(
         installment,
@@ -554,7 +439,6 @@ def obter_preco_shopping(
             "extracted_price"
         )
 
-
         if parcela is not None:
 
             try:
@@ -563,125 +447,52 @@ def obter_preco_shopping(
                     parcela
                 )
 
-
-                # Se preço principal == parcela,
-                # não é preço total confiável.
                 if abs(
                     preco - parcela
                 ) < 0.02:
 
                     return None
 
-
             except:
 
                 pass
 
 
-    # -----------------------------------------------------
-    # TEXTO DE PARCELA
-    # -----------------------------------------------------
+    # =====================================================
+    # MOEDA
+    # =====================================================
 
-    texto_lower = normalizar(
+    preco_texto = str(
         item.get(
             "price",
             ""
         )
-    )
+    ).upper()
 
+    if preco_texto:
 
-    if (
-        "/mês" in texto_lower
-        or "/mes" in texto_lower
-        or "/mo" in texto_lower
-        or "por mês" in texto_lower
-    ):
+        if (
+            "R$" not in preco_texto
+            and "BRL" not in preco_texto
+        ):
+            return None
 
-        return None
-
-
-    # -----------------------------------------------------
-    # FAIXA PLAUSÍVEL
-    # -----------------------------------------------------
 
     if marca not in FAIXAS_VALIDAS:
-
         return None
-
 
     minimo, maximo = (
         FAIXAS_VALIDAS[marca]
     )
-
 
     if not (
         minimo
         <= preco
         <= maximo
     ):
-
         return None
-
 
     return preco
-
-
-# =========================================================
-# DESCONTO PRELIMINAR
-# =========================================================
-
-def desconto_shopping(
-    item,
-    preco
-):
-
-    antigo = item.get(
-        "extracted_old_price"
-    )
-
-
-    if antigo is None:
-
-        return None
-
-
-    try:
-
-        antigo = float(
-            antigo
-        )
-
-    except:
-
-        return None
-
-
-    if (
-        antigo <= preco
-        or antigo > preco * 3
-    ):
-
-        return None
-
-
-    desconto = (
-        (
-            antigo
-            - preco
-        )
-        / antigo
-    ) * 100
-
-
-    if (
-        desconto < 1
-        or desconto > 80
-    ):
-
-        return None
-
-
-    return desconto
 
 
 # =========================================================
@@ -706,12 +517,8 @@ def classificar(
 
     if marca == "Hot Wheels":
 
-
         # TEAM TRANSPORT
-        if (
-            "team transport"
-            in serie_normal
-        ):
+        if "team transport" in serie_normal:
 
             if preco <= 119:
 
@@ -720,7 +527,6 @@ def classificar(
                     0,
                     "TEAM TRANSPORT ATÉ R$119"
                 )
-
 
             if preco <= 149:
 
@@ -746,7 +552,7 @@ def classificar(
                 return (
                     "🔥 BOA OFERTA",
                     1,
-                    "HOT WHEELS COLLECTOR COM DESCONTO"
+                    "COLLECTOR COM DESCONTO"
                 )
 
 
@@ -761,7 +567,6 @@ def classificar(
                     "HOT WHEELS PREMIUM/SILVER ATÉ R$59,99"
                 )
 
-
             if preco <= 69:
 
                 return (
@@ -770,7 +575,6 @@ def classificar(
                     "HOT WHEELS PREMIUM/SILVER ABAIXO DE R$69"
                 )
 
-
             if preco <= 89:
 
                 return (
@@ -778,7 +582,6 @@ def classificar(
                     1,
                     "HOT WHEELS PREMIUM/SILVER ATÉ R$89"
                 )
-
 
             if preco <= 99:
 
@@ -803,7 +606,6 @@ def classificar(
                 "MINI GT ABAIXO DE R$110"
             )
 
-
         if preco < 130:
 
             return (
@@ -811,7 +613,6 @@ def classificar(
                 1,
                 "MINI GT ABAIXO DE R$130"
             )
-
 
         if preco < 150:
 
@@ -837,7 +638,6 @@ def classificar(
             "DESCONTO REAL DE 30% OU MAIS"
         )
 
-
     if (
         desconto is not None
         and desconto >= 20
@@ -848,7 +648,6 @@ def classificar(
             1,
             "DESCONTO REAL DE 20% OU MAIS"
         )
-
 
     if (
         desconto is not None
@@ -861,85 +660,148 @@ def classificar(
             "DESCONTO REAL DE 15% OU MAIS"
         )
 
-
     return None
 
 
 # =========================================================
-# PEGAR PAGE TOKEN DO PRODUTO
+# PAGE TOKEN
 # =========================================================
 
-def obter_page_token(
-    item
-):
+def obter_page_token(item):
 
-    token = item.get(
+    return item.get(
         "immersive_product_page_token"
     )
 
 
-    if token:
+# =========================================================
+# PREÇO REAL DA LOJA
+#
+# CORREÇÃO PRINCIPAL:
+#
+# Se houver extracted_total,
+# usamos ele.
+#
+# extracted_price pode ser só parcela.
+# =========================================================
 
-        return token
+def preco_real_store(store):
+
+    # =====================================================
+    # 1 - TOTAL DO PARCELAMENTO
+    # =====================================================
+
+    total = store.get(
+        "extracted_total"
+    )
+
+    if total is not None:
+
+        try:
+
+            total = float(total)
+
+            if total > 0:
+                return total
+
+        except:
+            pass
 
 
-    url_api = item.get(
-        "serpapi_immersive_product_api"
+    # =====================================================
+    # 2 - PREÇO NORMAL
+    #
+    # Só usamos extracted_price quando NÃO existe
+    # indicação clara de parcelamento.
+    # =====================================================
+
+    parcelamento = str(
+        store.get(
+            "installments_description",
+            ""
+        )
+    )
+
+    duracao = store.get(
+        "monthly_payment_duration"
     )
 
 
-    if not url_api:
+    if (
+        parcelamento
+        or duracao
+    ):
 
+        # Tem parcelamento mas não veio total:
+        # preço não é confiável.
         return None
 
 
+    preco = store.get(
+        "extracted_price"
+    )
+
+    if preco is None:
+        return None
+
     try:
 
-        parsed = urlparse(
-            url_api
-        )
-
-        parametros = parse_qs(
-            parsed.query
-        )
-
-        valores = parametros.get(
-            "page_token"
-        )
-
-
-        if valores:
-
-            return valores[0]
-
+        preco = float(preco)
 
     except:
 
-        pass
+        return None
 
+    return preco
+
+
+# =========================================================
+# PREÇO ANTIGO DA LOJA
+# =========================================================
+
+def preco_antigo_store(store):
+
+    possibilidades = [
+        store.get(
+            "extracted_original_price"
+        ),
+        store.get(
+            "extracted_old_price"
+        )
+    ]
+
+    for valor in possibilidades:
+
+        if valor is None:
+            continue
+
+        try:
+
+            valor = float(valor)
+
+            if valor > 0:
+                return valor
+
+        except:
+
+            pass
 
     return None
 
 
 # =========================================================
-# LINK DIRETO EXATO
-#
-# Essa é a parte mais importante.
-#
-# Faz consulta ao produto imersivo
-# APENAS para oferta que seria enviada.
+# RESOLVER LINK EXATO
 # =========================================================
 
-def resolver_oferta_exata(
-    item,
-    loja_desejada,
-    preco_alvo
+def resolver_link_exato(
+    shopping_item,
+    loja,
+    preco_shopping
 ):
 
     page_token = obter_page_token(
-        item
+        shopping_item
     )
-
 
     if not page_token:
 
@@ -954,6 +816,10 @@ def resolver_oferta_exata(
         "page_token":
             page_token,
 
+        # IMPORTANTÍSSIMO
+        "more_stores":
+            "true",
+
         "api_key":
             SERPAPI_KEY
     }
@@ -967,11 +833,10 @@ def resolver_oferta_exata(
             timeout=30
         )
 
-
     except Exception as erro:
 
         print(
-            "ERRO AO RESOLVER LINK:",
+            "ERRO LINK:",
             erro
         )
 
@@ -981,7 +846,7 @@ def resolver_oferta_exata(
     if resposta.status_code != 200:
 
         print(
-            "ERRO LINK DIRETO HTTP:",
+            "ERRO LINK HTTP:",
             resposta.status_code
         )
 
@@ -990,21 +855,16 @@ def resolver_oferta_exata(
 
     dados = resposta.json()
 
-
-    product_results = dados.get(
+    produto = dados.get(
         "product_results",
         {}
     )
 
-
-    stores = product_results.get(
+    stores = produto.get(
         "stores",
         []
     )
 
-
-    # Algumas estruturas podem trazer stores
-    # diretamente no JSON.
     if not stores:
 
         stores = dados.get(
@@ -1025,7 +885,6 @@ def resolver_oferta_exata(
             )
         )
 
-
         link = store.get(
             "link",
             ""
@@ -1033,7 +892,6 @@ def resolver_oferta_exata(
 
 
         if not link:
-
             continue
 
 
@@ -1041,10 +899,10 @@ def resolver_oferta_exata(
 
 
         # =================================================
-        # CONFIRMA LOJA
+        # CONFIRMA MERCADO LIVRE
         # =================================================
 
-        if loja_desejada == "Mercado Livre":
+        if loja == "Mercado Livre":
 
             if not (
                 "mercado livre" in nome
@@ -1054,7 +912,6 @@ def resolver_oferta_exata(
 
                 continue
 
-
             if (
                 "mercadolivre.com.br"
                 not in link_lower
@@ -1063,7 +920,11 @@ def resolver_oferta_exata(
                 continue
 
 
-        elif loja_desejada == "Amazon":
+        # =================================================
+        # CONFIRMA AMAZON
+        # =================================================
+
+        elif loja == "Amazon":
 
             if not (
                 "amazon" in nome
@@ -1073,7 +934,6 @@ def resolver_oferta_exata(
 
                 continue
 
-
             if (
                 "amazon.com.br"
                 not in link_lower
@@ -1081,49 +941,37 @@ def resolver_oferta_exata(
 
                 continue
 
-
         else:
 
             continue
 
 
         # =================================================
-        # BLOQUEIA INTERNACIONAL
+        # INTERNACIONAL / USADO
         # =================================================
 
-        detalhes = store.get(
-            "details_and_offers",
-            []
-        )
-
-
-        if isinstance(
-            detalhes,
-            list
-        ):
-
-            detalhes_texto = " ".join(
-                str(x)
-                for x in detalhes
-            )
-
-        else:
-
-            detalhes_texto = str(
-                detalhes
-            )
-
-
-        texto_validacao = " ".join([
-            nome,
-            store.get(
-                "title",
-                ""
+        texto = " ".join([
+            str(
+                store.get(
+                    "title",
+                    ""
+                )
             ),
-            detalhes_texto,
+            str(
+                store.get(
+                    "details_and_offers",
+                    ""
+                )
+            ),
             str(
                 store.get(
                     "shipping",
+                    ""
+                )
+            ),
+            str(
+                store.get(
+                    "delivery",
                     ""
                 )
             )
@@ -1131,47 +979,41 @@ def resolver_oferta_exata(
 
 
         if not texto_produto_valido(
-            texto_validacao
+            texto
         ):
 
             continue
 
 
         # =================================================
-        # PREÇO REAL DA OFERTA DA LOJA
+        # PREÇO TOTAL REAL
         # =================================================
 
-        preco_store = store.get(
-            "extracted_price"
+        preco_real = preco_real_store(
+            store
         )
 
 
-        if preco_store is None:
+        if preco_real is None:
 
             continue
 
 
-        try:
-
-            preco_store = float(
-                preco_store
-            )
-
-        except:
-
-            continue
+        antigo = preco_antigo_store(
+            store
+        )
 
 
         diferenca = abs(
-            preco_store
-            - preco_alvo
+            preco_real
+            - preco_shopping
         )
 
 
         percentual = (
             diferenca
-            / preco_alvo
-            if preco_alvo > 0
+            / preco_shopping
+            if preco_shopping > 0
             else 999
         )
 
@@ -1182,7 +1024,10 @@ def resolver_oferta_exata(
                 link,
 
             "preco":
-                preco_store,
+                preco_real,
+
+            "preco_antigo":
+                antigo,
 
             "diferenca":
                 diferenca,
@@ -1190,16 +1035,8 @@ def resolver_oferta_exata(
             "percentual":
                 percentual,
 
-            "preco_antigo":
-                store.get(
-                    "extracted_original_price"
-                ),
-
-            "nome":
-                store.get(
-                    "name",
-                    ""
-                )
+            "store":
+                store
         })
 
 
@@ -1208,7 +1045,7 @@ def resolver_oferta_exata(
         return None
 
 
-    # Mais próximo do preço encontrado no Shopping.
+    # Mais próximo do Shopping
     candidatos.sort(
         key=lambda x:
             x["diferenca"]
@@ -1219,15 +1056,17 @@ def resolver_oferta_exata(
 
 
     # =====================================================
-    # SÓ ACEITA SE O PREÇO DA LOJA FOR REALMENTE PRÓXIMO
+    # ACEITA PEQUENA VARIAÇÃO
     #
-    # diferença máxima:
-    # R$2 ou 2%
+    # Até R$5 ou 5%.
+    #
+    # Isso evita jogar fora produto porque o Google
+    # atualizou alguns minutos antes/depois da loja.
     # =====================================================
 
     if (
-        melhor["diferenca"] > 2.00
-        and melhor["percentual"] > 0.02
+        melhor["diferenca"] > 5
+        and melhor["percentual"] > 0.05
     ):
 
         return None
@@ -1258,7 +1097,6 @@ def carregar_historico():
             return json.load(
                 arquivo
             )
-
 
     except:
 
@@ -1337,7 +1175,6 @@ def enviar_email(
                 mensagem
             )
 
-
         print(
             "EMAIL ENVIADO COM SUCESSO."
         )
@@ -1348,7 +1185,7 @@ def enviar_email(
     except Exception as erro:
 
         print(
-            "ERRO AO ENVIAR EMAIL:",
+            "ERRO EMAIL:",
             erro
         )
 
@@ -1356,19 +1193,17 @@ def enviar_email(
 
 
 # =========================================================
-# ETAPA 1
-# GOOGLE SHOPPING
+# 1 - BUSCAR NO SHOPPING
 # =========================================================
 
 candidatos = []
-
 ids_vistos = set()
 
 total_shopping = 0
-precos_parcelados_rejeitados = 0
-internacionais_rejeitados = 0
-escalas_rejeitadas = 0
-basicos_rejeitados = 0
+rejeitados_parcela = 0
+rejeitados_internacional = 0
+rejeitados_escala = 0
+rejeitados_basico = 0
 
 
 for numero, termo in enumerate(
@@ -1377,15 +1212,12 @@ for numero, termo in enumerate(
 ):
 
     print()
-
     print(
         f"BUSCA {numero}/"
         f"{len(BUSCAS)}"
     )
 
-    print(
-        termo
-    )
+    print(termo)
 
 
     parametros = {
@@ -1418,7 +1250,6 @@ for numero, termo in enumerate(
             timeout=30
         )
 
-
     except Exception as erro:
 
         print(
@@ -1432,7 +1263,7 @@ for numero, termo in enumerate(
     if resposta.status_code != 200:
 
         print(
-            "ERRO SHOPPING HTTP:",
+            "ERRO HTTP:",
             resposta.status_code
         )
 
@@ -1441,33 +1272,25 @@ for numero, termo in enumerate(
 
     dados = resposta.json()
 
-
-    shopping_results = dados.get(
+    shopping = dados.get(
         "shopping_results",
         []
     )
 
-
     print(
-        "RESULTADOS SHOPPING:",
-        len(shopping_results)
+        "RESULTADOS:",
+        len(shopping)
     )
-
 
     total_shopping += len(
-        shopping_results
+        shopping
     )
 
 
-    for item in shopping_results:
+    for item in shopping:
 
         titulo = item.get(
             "title",
-            ""
-        )
-
-        source = item.get(
-            "source",
             ""
         )
 
@@ -1476,10 +1299,11 @@ for numero, termo in enumerate(
             ""
         )
 
+        source = item.get(
+            "source",
+            ""
+        )
 
-        # =================================================
-        # LOJA
-        # =================================================
 
         loja = identificar_loja(
             source
@@ -1487,13 +1311,8 @@ for numero, termo in enumerate(
 
 
         if loja is None:
-
             continue
 
-
-        # =================================================
-        # TEXTO / INTERNACIONAL
-        # =================================================
 
         texto_validacao = " ".join([
             titulo,
@@ -1523,26 +1342,18 @@ for numero, termo in enumerate(
             texto_validacao
         ):
 
-            internacionais_rejeitados += 1
+            rejeitados_internacional += 1
             continue
 
-
-        # =================================================
-        # ESCALA
-        # =================================================
 
         if not escala_valida(
             titulo,
             snippet
         ):
 
-            escalas_rejeitadas += 1
+            rejeitados_escala += 1
             continue
 
-
-        # =================================================
-        # MARCA
-        # =================================================
 
         marca = identificar_marca(
             titulo
@@ -1550,13 +1361,8 @@ for numero, termo in enumerate(
 
 
         if marca is None:
-
             continue
 
-
-        # =================================================
-        # HOT WHEELS
-        # =================================================
 
         serie = None
 
@@ -1568,18 +1374,13 @@ for numero, termo in enumerate(
                 snippet
             )
 
-
             if serie is None:
 
-                basicos_rejeitados += 1
+                rejeitados_basico += 1
                 continue
 
 
-        # =================================================
-        # PREÇO
-        # =================================================
-
-        preco = obter_preco_shopping(
+        preco = preco_shopping_valido(
             item,
             marca
         )
@@ -1587,32 +1388,25 @@ for numero, termo in enumerate(
 
         if preco is None:
 
-            precos_parcelados_rejeitados += 1
+            rejeitados_parcela += 1
             continue
 
 
-        desconto = desconto_shopping(
-            item,
-            preco
-        )
-
+        # =================================================
+        # CLASSIFICA PRELIMINARMENTE
+        # =================================================
 
         classificacao = classificar(
             marca,
             serie,
             preco,
-            desconto
+            None
         )
 
 
         if classificacao is None:
 
             continue
-
-
-        ranking, ordem, motivo = (
-            classificacao
-        )
 
 
         product_id = str(
@@ -1623,42 +1417,43 @@ for numero, termo in enumerate(
         )
 
 
-        if not product_id:
+        page_token = obter_page_token(
+            item
+        )
 
-            # Sem product ID não conseguimos
-            # resolver anúncio exato.
+
+        if (
+            not product_id
+            or not page_token
+        ):
+
             continue
 
 
-        chave = (
+        id_produto = (
+            f"{VERSAO_HISTORICO}|"
             f"{loja}|"
             f"{product_id}"
         )
 
 
-        if chave in ids_vistos:
+        if id_produto in ids_vistos:
 
             continue
 
 
         ids_vistos.add(
-            chave
+            id_produto
         )
 
 
         candidatos.append({
 
             "id":
-                chave,
-
-            "product_id":
-                product_id,
+                id_produto,
 
             "titulo":
                 titulo,
-
-            "loja":
-                loja,
 
             "marca":
                 marca,
@@ -1666,34 +1461,24 @@ for numero, termo in enumerate(
             "serie":
                 serie,
 
+            "loja":
+                loja,
+
             "preco_shopping":
                 preco,
 
-            "desconto_shopping":
-                desconto,
-
-            "ranking":
-                ranking,
-
-            "ranking_ordem":
-                ordem,
-
-            "motivo":
-                motivo,
+            "shopping_item":
+                item,
 
             "carros_top":
                 identificar_carros_top(
                     titulo
-                ),
-
-            "shopping_item":
-                item
+                )
         })
 
 
 # =========================================================
-# ETAPA 2
-# FILTRO DE HISTÓRICO ANTES DE GASTAR API EXTRA
+# 2 - HISTÓRICO
 # =========================================================
 
 historico = carregar_historico()
@@ -1708,7 +1493,6 @@ for item in candidatos:
     )
 
 
-    # NUNCA MANDOU
     if registro is None:
 
         item["tipo_alerta"] = (
@@ -1722,7 +1506,6 @@ for item in candidatos:
         continue
 
 
-    # NOVO DIA
     if (
         registro.get(
             "ultima_data_enviada"
@@ -1741,28 +1524,25 @@ for item in candidatos:
         continue
 
 
-    # MESMO DIA:
-    # só interessa resolver novamente
-    # se o preço do Shopping aparentemente caiu.
-    menor_dia = registro.get(
+    menor = registro.get(
         "menor_preco_dia"
     )
 
 
     if (
-        menor_dia is None
+        menor is None
         or item[
             "preco_shopping"
-        ] < menor_dia
+        ] < menor
     ):
 
-        item[
-            "tipo_alerta"
-        ] = "QUEDA_PRECO"
+        item["tipo_alerta"] = (
+            "QUEDA_PRECO"
+        )
 
         item[
             "preco_anterior_encontrado"
-        ] = menor_dia
+        ] = menor
 
         para_resolver.append(
             item
@@ -1770,14 +1550,13 @@ for item in candidatos:
 
 
 # =========================================================
-# ETAPA 3
-# RESOLVER O LINK DIRETO DO ANÚNCIO EXATO
+# 3 - CONFIRMAR PREÇO + LINK EXATO
 # =========================================================
 
-ofertas_finais = []
+ofertas = []
 
-sem_link_direto = 0
-preco_divergente = 0
+sem_link = 0
+preco_nao_bateu = 0
 
 
 for numero, item in enumerate(
@@ -1786,9 +1565,8 @@ for numero, item in enumerate(
 ):
 
     print()
-
     print(
-        f"RESOLVENDO LINK "
+        f"CONFIRMANDO "
         f"{numero}/"
         f"{len(para_resolver)}"
     )
@@ -1798,7 +1576,7 @@ for numero, item in enumerate(
     )
 
 
-    oferta_store = resolver_oferta_exata(
+    exata = resolver_link_exato(
 
         item["shopping_item"],
 
@@ -1808,61 +1586,43 @@ for numero, item in enumerate(
     )
 
 
-    if oferta_store is None:
+    if exata is None:
 
-        sem_link_direto += 1
+        sem_link += 1
 
         print(
             "DESCARTADO:"
-            " não achei anúncio direto "
-            "com o mesmo preço."
+            " não foi possível confirmar "
+            "preço + anúncio direto."
         )
 
         continue
 
 
-    preco_real = oferta_store[
+    preco_real = exata[
         "preco"
     ]
 
-
-    # =====================================================
-    # RECLASSIFICA COM O PREÇO DA LOJA
-    # =====================================================
-
-    preco_antigo = oferta_store.get(
+    preco_antigo = exata[
         "preco_antigo"
-    )
-
-    desconto_real = None
+    ]
 
 
-    if preco_antigo is not None:
+    desconto = None
 
-        try:
 
-            preco_antigo = float(
+    if (
+        preco_antigo is not None
+        and preco_antigo > preco_real
+    ):
+
+        desconto = (
+            (
                 preco_antigo
+                - preco_real
             )
-
-
-            if (
-                preco_antigo
-                > preco_real
-            ):
-
-                desconto_real = (
-                    (
-                        preco_antigo
-                        - preco_real
-                    )
-                    / preco_antigo
-                ) * 100
-
-
-        except:
-
-            preco_antigo = None
+            / preco_antigo
+        ) * 100
 
 
     classificacao = classificar(
@@ -1873,20 +1633,17 @@ for numero, item in enumerate(
 
         preco_real,
 
-        desconto_real
+        desconto
     )
 
 
-    # Depois de pegar o preço REAL
-    # pode deixar de ser oferta.
     if classificacao is None:
 
-        preco_divergente += 1
+        preco_nao_bateu += 1
 
         print(
             "DESCARTADO:"
-            " preço real não atende "
-            "aos filtros."
+            " preço confirmado não é oferta."
         )
 
         continue
@@ -1897,7 +1654,7 @@ for numero, item in enumerate(
     )
 
 
-    item_final = {
+    ofertas.append({
 
         "id":
             item["id"],
@@ -1905,14 +1662,14 @@ for numero, item in enumerate(
         "titulo":
             item["titulo"],
 
-        "loja":
-            item["loja"],
-
         "marca":
             item["marca"],
 
         "serie":
             item["serie"],
+
+        "loja":
+            item["loja"],
 
         "preco":
             preco_real,
@@ -1921,10 +1678,10 @@ for numero, item in enumerate(
             preco_antigo,
 
         "desconto":
-            desconto_real,
+            desconto,
 
         "link":
-            oferta_store["link"],
+            exata["link"],
 
         "ranking":
             ranking,
@@ -1945,24 +1702,16 @@ for numero, item in enumerate(
             item.get(
                 "preco_anterior_encontrado"
             )
-    }
-
-
-    ofertas_finais.append(
-        item_final
-    )
+    })
 
 
 # =========================================================
 # ORDENAR
 # =========================================================
 
-ofertas_finais.sort(
-
+ofertas.sort(
     key=lambda x: (
-
         x["ranking_ordem"],
-
         x["preco"]
     )
 )
@@ -1978,7 +1727,7 @@ with open(
     encoding="utf-8"
 ) as arquivo:
 
-    for item in ofertas_finais:
+    for item in ofertas:
 
         if (
             item["loja"]
@@ -1997,12 +1746,9 @@ with open(
     encoding="utf-8"
 ) as arquivo:
 
-    for item in ofertas_finais:
+    for item in ofertas:
 
-        if (
-            item["loja"]
-            == "Amazon"
-        ):
+        if item["loja"] == "Amazon":
 
             arquivo.write(
                 item["link"]
@@ -2014,7 +1760,7 @@ with open(
 # EMAIL
 # =========================================================
 
-if ofertas_finais:
+if ofertas:
 
     corpo = []
 
@@ -2029,22 +1775,22 @@ if ofertas_finais:
     corpo.append("")
 
     corpo.append(
-        "✅ PREÇO CONFIRMADO NA LOJA"
+        "✅ PREÇO TOTAL CONFIRMADO"
     )
 
     corpo.append(
-        "✅ LINK DIRETO DO ANÚNCIO"
+        "✅ LINK DIRETO CONFIRMADO"
     )
 
     corpo.append(
-        "✅ PARCELAMENTO IGNORADO"
+        "✅ PARCELA IGNORADA"
     )
 
     corpo.append("")
 
 
     for numero, item in enumerate(
-        ofertas_finais,
+        ofertas,
         start=1
     ):
 
@@ -2052,22 +1798,17 @@ if ofertas_finais:
             "=" * 65
         )
 
-
         corpo.append(
             f"{numero}. "
             f"{item['ranking']}"
         )
 
-
         corpo.append(
-            f"🛍️ Loja: "
-            f"{item['loja']}"
+            f"🛍️ {item['loja']}"
         )
 
-
         corpo.append(
-            f"🏷️ Marca: "
-            f"{item['marca']}"
+            f"🏷️ {item['marca']}"
         )
 
 
@@ -2098,30 +1839,12 @@ if ofertas_finais:
 
 
         if (
-            item["tipo_alerta"]
-            == "QUEDA_PRECO"
-        ):
-
-            anterior = item.get(
-                "preco_anterior_encontrado"
-            )
-
-            if anterior is not None:
-
-                corpo.append(
-                    f"📉 Antes hoje: "
-                    f"R$ {anterior:.2f}"
-                )
-
-
-        if (
             item["preco_antigo"]
             is not None
         ):
 
             corpo.append(
-                f"❌ De: "
-                f"R$ "
+                f"❌ De R$ "
                 f"{item['preco_antigo']:.2f}"
             )
 
@@ -2132,10 +1855,7 @@ if ofertas_finais:
         )
 
 
-        if (
-            item["desconto"]
-            is not None
-        ):
+        if item["desconto"] is not None:
 
             corpo.append(
                 f"🔥 DESCONTO: "
@@ -2144,14 +1864,13 @@ if ofertas_finais:
 
 
         corpo.append(
-            f"🔎 Motivo: "
-            f"{item['motivo']}"
+            f"🔎 {item['motivo']}"
         )
 
         corpo.append("")
 
         corpo.append(
-            "🔗 ANÚNCIO DIRETO:"
+            "🔗 LINK DIRETO:"
         )
 
         corpo.append(
@@ -2170,40 +1889,17 @@ if ofertas_finais:
             item["ranking"]
         )
 
-
-        if item["serie"]:
-
-            corpo.append(
-                f"🏁 {item['serie']}"
-            )
-
-
         corpo.append(
             f"🏎️ *{item['titulo']}*"
         )
 
-
-        if (
-            item["preco_antigo"]
-            is not None
-        ):
-
-            corpo.append(
-                f"❌ De R$ "
-                f"{item['preco_antigo']:.2f}"
-            )
-
-
         corpo.append(
-            f"💰 *Por R$ "
+            f"💰 *R$ "
             f"{item['preco']:.2f}*"
         )
 
 
-        if (
-            item["desconto"]
-            is not None
-        ):
+        if item["desconto"] is not None:
 
             corpo.append(
                 f"🔥 "
@@ -2224,8 +1920,7 @@ if ofertas_finais:
         corpo.append("")
 
         corpo.append(
-            "⚠️ Preço pode mudar "
-            "a qualquer momento."
+            "⚠️ Preço pode mudar."
         )
 
         corpo.append("")
@@ -2233,7 +1928,7 @@ if ofertas_finais:
 
     email_ok = enviar_email(
 
-        f"🚨 {len(ofertas_finais)} "
+        f"🚨 {len(ofertas)} "
         "oferta(s) Diecast",
 
         "\n".join(
@@ -2249,49 +1944,36 @@ else:
 
 Data: {HOJE}
 
-Busca concluída normalmente.
+Busca concluída.
 
-Nenhuma NOVA oferta com PREÇO E LINK DIRETO confirmados foi encontrada.
+Nenhuma NOVA oferta com preço e link direto confirmados.
 
-✅ Google Shopping usado para descoberta
-✅ Preço da parcela não é aceito
-✅ Oferta conferida na loja antes do envio
-✅ Link direto obrigatório
-✅ Nenhum link de pesquisa é enviado
-✅ Mercado Livre monitorado
-✅ Amazon Brasil monitorada
-✅ Hot Wheels básicos bloqueados
-✅ Escala errada bloqueada
-✅ Internacional bloqueado quando identificado
-
-RESUMO:
-
-Resultados Shopping analisados:
+Shopping analisados:
 {total_shopping}
 
-Candidatos que passaram nos filtros:
+Candidatos:
 {len(candidatos)}
 
-Candidatos novos/queda para conferir:
+Candidatos desta rodada:
 {len(para_resolver)}
 
-Descartados por não achar link direto exato:
-{sem_link_direto}
+Sem confirmação de link/preço:
+{sem_link}
 
-Descartados porque o preço real não atendia:
-{preco_divergente}
+Preço confirmado fora dos critérios:
+{preco_nao_bateu}
 
-Preço parcelado/inválido rejeitado:
-{precos_parcelados_rejeitados}
+Parcelas/preços inválidos rejeitados:
+{rejeitados_parcela}
 
-Internacional/usado rejeitado:
-{internacionais_rejeitados}
+Internacionais/usados rejeitados:
+{rejeitados_internacional}
 
-Escala errada rejeitada:
-{escalas_rejeitadas}
+Escala errada:
+{rejeitados_escala}
 
-Hot Wheels básico rejeitado:
-{basicos_rejeitados}
+Hot Wheels básicos:
+{rejeitados_basico}
 """
 
 
@@ -2304,33 +1986,29 @@ Hot Wheels básico rejeitado:
 
 
 # =========================================================
-# HISTÓRICO
+# SALVAR HISTÓRICO
 # =========================================================
 
 if (
-    ofertas_finais
+    ofertas
     and email_ok
 ):
 
-    for item in ofertas_finais:
+    for item in ofertas:
 
         chave = item["id"]
 
         preco = item["preco"]
 
-        registro_antigo = (
-            historico.get(
-                chave,
-                {}
-            )
+        anterior = historico.get(
+            chave,
+            {}
         )
 
 
-        menor_historico = (
-            registro_antigo.get(
-                "menor_preco_historico",
-                preco
-            )
+        menor_historico = anterior.get(
+            "menor_preco_historico",
+            preco
         )
 
 
@@ -2371,21 +2049,21 @@ if (
 
 
 # =========================================================
-# LOG FINAL
+# LOG
 # =========================================================
 
 print()
 print("=" * 80)
 
 print(
-    "OFERTAS CONFIRMADAS E ENVIADAS:",
-    len(ofertas_finais)
+    "OFERTAS CONFIRMADAS:",
+    len(ofertas)
 )
 
 print("=" * 80)
 
 
-for item in ofertas_finais:
+for item in ofertas:
 
     print(
         item["ranking"]
@@ -2401,14 +2079,12 @@ for item in ofertas_finais:
         item["marca"]
     )
 
-
     if item["serie"]:
 
         print(
             "SÉRIE:",
             item["serie"]
         )
-
 
     print(
         "TÍTULO:",
@@ -2421,20 +2097,15 @@ for item in ofertas_finais:
     )
 
     print(
-        "PARCELAMENTO: IGNORADO"
+        "PARCELA: IGNORADA"
     )
 
-
-    if (
-        item["desconto"]
-        is not None
-    ):
+    if item["desconto"] is not None:
 
         print(
             f"DESCONTO: "
             f"{item['desconto']:.1f}%"
         )
-
 
     print(
         "LINK DIRETO:",
@@ -2449,29 +2120,34 @@ for item in ofertas_finais:
 print()
 
 print(
-    "SEM LINK DIRETO:",
-    sem_link_direto
+    "SHOPPING ANALISADOS:",
+    total_shopping
 )
 
 print(
-    "PREÇO REAL FORA DOS FILTROS:",
-    preco_divergente
+    "CANDIDATOS:",
+    len(candidatos)
 )
 
 print(
-    "PREÇO PARCELADO/INVÁLIDO:",
-    precos_parcelados_rejeitados
+    "LINK/PREÇO NÃO CONFIRMADO:",
+    sem_link
+)
+
+print(
+    "PREÇO FORA DOS CRITÉRIOS:",
+    preco_nao_bateu
 )
 
 
 if email_ok:
 
     print(
-        "📧 E-MAIL ENVIADO COM SUCESSO."
+        "📧 E-MAIL ENVIADO."
     )
 
 else:
 
     print(
-        "❌ E-MAIL NÃO FOI ENVIADO."
+        "❌ E-MAIL FALHOU."
     )
