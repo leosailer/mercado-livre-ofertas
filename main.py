@@ -26,6 +26,10 @@ LINKS_ARQUIVO = "links_para_afiliado.txt"
 
 MAX_OFERTAS_EMAIL = 20
 
+# Tempo maior para evitar perder uma busca boa
+# simplesmente porque a SearchAPI demorou.
+TIMEOUT_SEARCHAPI = 120
+
 FUSO_BRASIL = timezone(timedelta(hours=-3))
 AGORA_BRASIL = datetime.now(FUSO_BRASIL)
 
@@ -36,19 +40,12 @@ PERIODO = "MANHÃ" if HORA < 13 else "TARDE"
 
 
 # ============================================================
-# ROTAÇÃO DAS BUSCAS
+# ROTAÇÃO
 #
-# OBJETIVO:
-# Hot Wheels Premium é o FOCO PRINCIPAL.
+# 2 buscas por execução.
 #
-# Sempre usamos somente 2 créditos por execução.
-#
-# A maioria absoluta das rodadas possui:
-#   1 busca HW Premium ampla
-#   1 busca HW específica
-#
-# Mini GT / Kaido / Tarmac / Pop Race / Inno64
-# entram apenas em algumas rodadas.
+# Hot Wheels domina praticamente todas as rodadas.
+# Queries curtas para tentar pegar 40 resultados.
 # ============================================================
 
 ROTACOES = {
@@ -56,35 +53,35 @@ ROTACOES = {
     # SEGUNDA
     0: {
         "MANHÃ": [
-            "Hot Wheels Premium",
             "Hot Wheels Car Culture",
+            "Hot Wheels Boulevard",
         ],
         "TARDE": [
-            "Hot Wheels Boulevard",
             "Hot Wheels Silver Series",
+            "Hot Wheels Modern Classics",
         ],
     },
 
     # TERÇA
     1: {
         "MANHÃ": [
-            "Hot Wheels Premium",
-            "Hot Wheels Modern Classics",
-        ],
-        "TARDE": [
             "Hot Wheels Car Culture",
             "Hot Wheels Japan Historics",
+        ],
+        "TARDE": [
+            "Hot Wheels Fast Furious Premium",
+            "Hot Wheels Pop Culture",
         ],
     },
 
     # QUARTA
     2: {
         "MANHÃ": [
-            "Hot Wheels Premium",
-            "Hot Wheels Fast Furious",
+            "Hot Wheels Boulevard",
+            "Hot Wheels Race Day",
         ],
         "TARDE": [
-            "Hot Wheels Boulevard",
+            "Hot Wheels Car Culture",
             "Mini GT",
         ],
     },
@@ -92,23 +89,23 @@ ROTACOES = {
     # QUINTA
     3: {
         "MANHÃ": [
-            "Hot Wheels Premium",
-            "Hot Wheels Race Day",
+            "Hot Wheels Car Culture",
+            "Hot Wheels Vintage Racing",
         ],
         "TARDE": [
-            "Hot Wheels Car Culture",
             "Hot Wheels Silver Series",
+            "Hot Wheels Boulevard",
         ],
     },
 
     # SEXTA
     4: {
         "MANHÃ": [
-            "Hot Wheels Premium",
+            "Hot Wheels Car Culture",
             "Hot Wheels Boulevard",
         ],
         "TARDE": [
-            "Hot Wheels Premium",
+            "Hot Wheels Car Culture",
             "Hot Wheels Team Transport",
         ],
     },
@@ -120,7 +117,7 @@ ROTACOES = {
             "Hot Wheels Silver Series",
         ],
         "TARDE": [
-            "Hot Wheels Premium",
+            "Hot Wheels Boulevard",
             "Kaido House",
         ],
     },
@@ -128,11 +125,11 @@ ROTACOES = {
     # DOMINGO
     6: {
         "MANHÃ": [
-            "Hot Wheels Premium",
+            "Hot Wheels Car Culture",
             "Hot Wheels Boulevard",
         ],
         "TARDE": [
-            "Hot Wheels Car Culture",
+            "Hot Wheels Silver Series",
             "Mini GT Kaido House",
         ],
     },
@@ -149,16 +146,24 @@ LOJAS_BRASIL = [
     "mercado livre",
     "mercadolivre",
     "mercadolivre.com.br",
+
     "amazon.com.br",
     "amazon brasil",
+
     "shopee",
     "shopee brasil",
+
     "magalu",
     "magazine luiza",
+
     "casas bahia",
+
     "ri happy",
+
     "americanas",
+
     "extra",
+
     "ponto",
 ]
 
@@ -175,6 +180,7 @@ LOJAS_PROIBIDAS = [
     "alibaba",
     "banggood",
     "dhgate",
+
     "boost gear",
     "carolinasdiecast",
     "carolina's diecast",
@@ -209,9 +215,12 @@ TERMOS_IMPORTACAO = [
 
 
 # ============================================================
-# ANÚNCIOS PROBLEMÁTICOS
+# ANÚNCIOS DE VARIAÇÃO
 #
-# Evita preço da variação mais barata.
+# Evita aqueles:
+# "vários modelos"
+# "escolha o seu"
+# onde o preço pode ser só da opção mais barata.
 # ============================================================
 
 TERMOS_ANUNCIO_VARIAVEL = [
@@ -225,6 +234,8 @@ TERMOS_ANUNCIO_VARIAVEL = [
     "modelo a escolher",
     "escolha o modelo",
     "selecione o modelo",
+    "cores sortidas",
+    "sortido",
 ]
 
 
@@ -245,22 +256,28 @@ SERIES_HW = [
     ("slide street", "Slide Street"),
     ("power trip", "Power Trip"),
     ("vintage racing", "Vintage Racing"),
+
     ("team transport", "Team Transport"),
     ("boulevard", "Boulevard"),
     ("pop culture", "Pop Culture"),
+
     ("fast & furious", "Fast & Furious"),
     ("fast and furious", "Fast & Furious"),
     ("fast furious", "Fast & Furious"),
+
     ("silver series", "Silver Series"),
+
     ("elite 64", "Elite 64"),
     ("rlc", "RLC"),
+
     ("car culture", "Car Culture"),
+
     ("premium", "Premium"),
 ]
 
 
 # ============================================================
-# MODELOS DE MAIOR INTERESSE
+# MODELOS TOP
 # ============================================================
 
 MODELOS_TOP = [
@@ -268,37 +285,54 @@ MODELOS_TOP = [
     "testarossa",
     "f40",
     "f50",
+
     "porsche",
     "911",
     "gt3",
     "gt2",
+    "carrera",
+
     "skyline",
     "r32",
     "r33",
     "r34",
     "gt-r",
     "gtr",
+
     "supra",
+
     "rx-7",
     "rx7",
+
     "nsx",
+
     "lamborghini",
+
     "mclaren",
+
     "bmw",
+
     "audi",
+
     "civic",
+
     "s2000",
+
     "silvia",
+
     "datsun",
+
     "lancer evolution",
-    "evo",
+    "evolution",
+
     "mazda",
+
     "nissan",
 ]
 
 
 # ============================================================
-# NORMALIZAR
+# NORMALIZAÇÃO
 # ============================================================
 
 def normalizar(texto):
@@ -313,11 +347,13 @@ def normalizar(texto):
         texto
     )
 
-    return "".join(
+    texto = "".join(
         c
         for c in texto
         if not unicodedata.combining(c)
     )
+
+    return texto
 
 
 # ============================================================
@@ -335,7 +371,7 @@ def pegar_vendedor(item):
 
 
 # ============================================================
-# LOJA BRASILEIRA
+# LOJA BR
 # ============================================================
 
 def loja_brasileira(item):
@@ -348,7 +384,11 @@ def loja_brasileira(item):
         item.get("title", "")
     )
 
-    combinado = vendedor + " " + titulo
+    combinado = (
+        vendedor
+        + " "
+        + titulo
+    )
 
     if not vendedor:
         return False
@@ -380,7 +420,10 @@ def converter_preco_texto(valor):
     if valor is None:
         return None
 
-    if isinstance(valor, (int, float)):
+    if isinstance(
+        valor,
+        (int, float)
+    ):
         return float(valor)
 
     texto = str(valor)
@@ -425,7 +468,10 @@ def pegar_preco(item):
         "extracted_price"
     )
 
-    if isinstance(preco, (int, float)):
+    if isinstance(
+        preco,
+        (int, float)
+    ):
         return float(preco)
 
     return converter_preco_texto(
@@ -444,7 +490,10 @@ def pegar_preco_original(item):
 # DESCONTO
 # ============================================================
 
-def calcular_desconto(preco, antigo):
+def calcular_desconto(
+    preco,
+    antigo
+):
 
     if not preco or not antigo:
         return 0
@@ -452,12 +501,16 @@ def calcular_desconto(preco, antigo):
     if antigo <= preco:
         return 0
 
-    return round(
+    desconto = (
         (
-            (antigo - preco)
-            /
-            antigo
-        ) * 100,
+            antigo - preco
+        )
+        /
+        antigo
+    ) * 100
+
+    return round(
+        desconto,
         1
     )
 
@@ -468,12 +521,17 @@ def calcular_desconto(preco, antigo):
 
 def identificar_marca(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     if "kaido house" in t:
         return "Kaido House"
 
-    if "mini gt" in t or "minigt" in t:
+    if (
+        "mini gt" in t
+        or "minigt" in t
+    ):
         return "Mini GT"
 
     if "tarmac works" in t:
@@ -482,7 +540,10 @@ def identificar_marca(titulo):
     if "pop race" in t:
         return "Pop Race"
 
-    if "inno64" in t or "inno 64" in t:
+    if (
+        "inno64" in t
+        or "inno 64" in t
+    ):
         return "Inno64"
 
     if "hot wheels" in t:
@@ -497,11 +558,16 @@ def identificar_marca(titulo):
 
 def identificar_serie(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     for termo, nome in SERIES_HW:
 
-        if normalizar(termo) in t:
+        if normalizar(
+            termo
+        ) in t:
+
             return nome
 
     return ""
@@ -513,7 +579,9 @@ def identificar_serie(titulo):
 
 def escala_errada(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     escalas = [
         "1:18",
@@ -542,11 +610,14 @@ def escala_errada(titulo):
 
 def kit_ou_lote(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     termos = [
         "set completo",
         "colecao completa",
+        "coleção completa",
         "kit com",
         "kit de",
         "lote",
@@ -564,12 +635,14 @@ def kit_ou_lote(titulo):
 
 
 # ============================================================
-# ANÚNCIO COM VARIAÇÕES
+# VARIAÇÕES
 # ============================================================
 
 def anuncio_variavel(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     return any(
         normalizar(termo) in t
@@ -607,7 +680,7 @@ def produto_valido(item):
     if not marca:
         return False
 
-    # Hot Wheels básico não interessa.
+    # Hot Wheels básico é descartado.
     if marca == "Hot Wheels":
 
         serie = identificar_serie(
@@ -621,52 +694,54 @@ def produto_valido(item):
 
 
 # ============================================================
-# PREÇO MÁXIMO PARA ENTRAR
-#
-# IMPORTANTE:
-# isso só determina se o produto pode ser analisado.
-#
-# NÃO significa que seja boa oferta.
+# PREÇO MÁXIMO PARA ANALISAR
 # ============================================================
 
-def preco_valido(marca, serie, preco):
+def preco_valido(
+    marca,
+    serie,
+    preco
+):
 
     if preco is None:
         return False
 
+    # Proteção contra parcela.
     if preco < 20:
         return False
 
     if marca == "Hot Wheels":
 
         if serie == "Silver Series":
-            return preco <= 75
+            return preco <= 70
 
+        # Apertado.
         if serie == "Team Transport":
-            return preco <= 165
+            return preco <= 145
 
         if serie in [
             "Elite 64",
             "RLC"
         ]:
-            return preco <= 190
+            return preco <= 180
 
-        return preco <= 90
+        # Premium unitário
+        return preco <= 85
 
     if marca == "Mini GT":
-        return preco <= 145
+        return preco <= 135
 
     if marca == "Kaido House":
-        return preco < 199
+        return preco <= 180
 
     if marca == "Tarmac Works":
-        return preco <= 160
+        return preco <= 150
 
     if marca == "Pop Race":
-        return preco <= 160
+        return preco <= 150
 
     if marca == "Inno64":
-        return preco <= 170
+        return preco <= 160
 
     return False
 
@@ -677,30 +752,41 @@ def preco_valido(marca, serie, preco):
 
 def quantidade_modelos_top(titulo):
 
-    t = normalizar(titulo)
+    t = normalizar(
+        titulo
+    )
 
     encontrados = set()
 
     for modelo in MODELOS_TOP:
 
-        if normalizar(modelo) in t:
+        modelo_n = normalizar(
+            modelo
+        )
+
+        if modelo_n in t:
+
             encontrados.add(
-                normalizar(modelo)
+                modelo_n
             )
 
-    return len(encontrados)
+    return len(
+        encontrados
+    )
 
 
 # ============================================================
-# SCORE BASE DA LOJA
+# SCORE DA LOJA
 #
-# ML tem prioridade, mas NÃO pode transformar
-# produto caro em promoção.
+# Mercado Livre sobe,
+# mas não transforma preço ruim em oferta.
 # ============================================================
 
 def score_loja(vendedor):
 
-    v = normalizar(vendedor)
+    v = normalizar(
+        vendedor
+    )
 
     if (
         "mercadolivre" in v
@@ -750,7 +836,7 @@ def calcular_score(oferta):
     )
 
     # ========================================================
-    # MODELO DESEJADO
+    # MODELO TOP
     # ========================================================
 
     qtd_top = quantidade_modelos_top(
@@ -758,10 +844,10 @@ def calcular_score(oferta):
     )
 
     if qtd_top >= 1:
-        score += 8
+        score += 10
 
     if qtd_top >= 2:
-        score += 4
+        score += 5
 
     # ========================================================
     # HOT WHEELS
@@ -787,37 +873,46 @@ def calcular_score(oferta):
         ]
 
         if serie in series_fortes:
+
             score += 18
 
         elif serie == "Car Culture":
+
             score += 18
 
         elif serie == "Boulevard":
+
             score += 18
 
         elif serie == "Fast & Furious":
+
             score += 17
 
         elif serie == "Pop Culture":
+
             score += 12
 
         elif serie == "Silver Series":
+
             score += 8
 
         elif serie == "Team Transport":
+
             score += 12
 
         elif serie in [
             "Elite 64",
             "RLC"
         ]:
+
             score += 15
 
         elif serie == "Premium":
+
             score += 10
 
         # ====================================================
-        # PREÇO TEAM TRANSPORT
+        # TEAM TRANSPORT
         # ====================================================
 
         if serie == "Team Transport":
@@ -825,26 +920,29 @@ def calcular_score(oferta):
             if preco <= 100:
                 score += 45
 
-            elif preco <= 115:
-                score += 38
+            elif preco <= 110:
+                score += 40
+
+            elif preco <= 120:
+                score += 34
 
             elif preco <= 125:
                 score += 30
 
+            elif preco <= 130:
+                score += 24
+
             elif preco <= 135:
-                score += 22
+                score += 18
 
-            elif preco <= 145:
-                score += 14
-
-            elif preco <= 155:
-                score += 6
+            elif preco <= 140:
+                score += 10
 
             else:
-                score -= 5
+                score += 2
 
         # ====================================================
-        # ELITE / RLC
+        # ELITE/RLC
         # ====================================================
 
         elif serie in [
@@ -862,13 +960,10 @@ def calcular_score(oferta):
                 score += 20
 
             elif preco <= 170:
-                score += 10
-
-            else:
-                score += 0
+                score += 8
 
         # ====================================================
-        # HOT WHEELS PREMIUM UNITÁRIO
+        # PREMIUM UNITÁRIO
         # ====================================================
 
         else:
@@ -877,31 +972,28 @@ def calcular_score(oferta):
                 score += 50
 
             elif preco <= 50:
-                score += 45
+                score += 46
 
             elif preco <= 55:
-                score += 40
+                score += 41
 
             elif preco <= 60:
-                score += 34
+                score += 35
 
             elif preco <= 65:
-                score += 28
+                score += 29
 
             elif preco <= 70:
-                score += 20
+                score += 21
 
             elif preco <= 75:
                 score += 12
 
             elif preco <= 80:
-                score += 6
+                score += 5
 
             elif preco <= 85:
-                score += 0
-
-            else:
-                score -= 10
+                score -= 3
 
     # ========================================================
     # MINI GT
@@ -927,10 +1019,7 @@ def calcular_score(oferta):
             score += 14
 
         elif preco <= 135:
-            score += 7
-
-        else:
-            score += 0
+            score += 5
 
     # ========================================================
     # KAIDO HOUSE
@@ -940,36 +1029,29 @@ def calcular_score(oferta):
 
         score += 20
 
-        # Excelente
-        if preco <= 130:
-            score += 45
+        if preco <= 125:
+            score += 50
 
-        # Muito bom
-        elif preco <= 140:
-            score += 38
+        elif preco <= 135:
+            score += 42
 
-        # Bom
-        elif preco <= 150:
-            score += 30
+        elif preco <= 145:
+            score += 34
 
-        # Ainda interessante
-        elif preco <= 160:
-            score += 22
+        elif preco <= 155:
+            score += 26
 
-        # Só interessante
-        elif preco <= 170:
-            score += 12
+        elif preco <= 165:
+            score += 18
 
-        # Fraco
-        elif preco <= 180:
-            score += 5
+        elif preco <= 175:
+            score += 8
 
-        # Não queremos chamar isso de promoção
         else:
-            score -= 15
+            score -= 5
 
     # ========================================================
-    # TARMAC / POP RACE / INNO
+    # OUTROS PREMIUM
     # ========================================================
 
     else:
@@ -989,13 +1071,10 @@ def calcular_score(oferta):
             score += 15
 
         elif preco <= 150:
-            score += 7
-
-        else:
-            score += 0
+            score += 5
 
     # ========================================================
-    # DESCONTO REAL
+    # DESCONTO
     # ========================================================
 
     if desconto >= 35:
@@ -1023,9 +1102,12 @@ def calcular_score(oferta):
 def classificar(score):
 
     if score >= 90:
+        return "💎 ACHADO"
+
+    if score >= 75:
         return "🚨 IMPERDÍVEL"
 
-    if score >= 65:
+    if score >= 60:
         return "🔥 BOA OFERTA"
 
     return "👀 INTERESSANTE"
@@ -1052,17 +1134,33 @@ def buscar_shopping(termo):
         resposta = requests.get(
             SEARCH_URL,
             params=params,
-            timeout=45
+            timeout=TIMEOUT_SEARCHAPI
         )
+
+    except requests.exceptions.Timeout:
+
+        print(
+            "TIMEOUT SEARCHAPI:"
+        )
+
+        print(
+            "A consulta demorou mais de",
+            TIMEOUT_SEARCHAPI,
+            "segundos."
+        )
+
+        # NÃO tenta novamente.
+        # Evita gastar uma segunda consulta.
+        return [], False
 
     except Exception as erro:
 
         print(
-            "ERRO DE CONEXÃO:",
+            "ERRO SEARCHAPI:",
             erro
         )
 
-        return []
+        return [], False
 
     print(
         "STATUS SEARCHAPI:",
@@ -1075,7 +1173,7 @@ def buscar_shopping(termo):
             resposta.text[:1000]
         )
 
-        return []
+        return [], False
 
     try:
 
@@ -1088,12 +1186,14 @@ def buscar_shopping(termo):
             erro
         )
 
-        return []
+        return [], False
 
-    return dados.get(
+    resultados = dados.get(
         "shopping_results",
         []
     )
+
+    return resultados, True
 
 
 # ============================================================
@@ -1110,7 +1210,7 @@ def pegar_link(item):
 
 
 # ============================================================
-# CHAVE DA OFERTA
+# CHAVE
 # ============================================================
 
 def chave_oferta(oferta):
@@ -1144,7 +1244,7 @@ def chave_oferta(oferta):
 
 
 # ============================================================
-# FORMATAR PREÇO
+# PREÇO BR
 # ============================================================
 
 def formatar_preco(valor):
@@ -1353,6 +1453,16 @@ def enviar_email(
     linhas.append("")
 
     linhas.append(
+        f"CONSULTAS COM RESPOSTA 200: "
+        f"{estatisticas['consultas_ok']}"
+    )
+
+    linhas.append(
+        f"CONSULTAS COM FALHA/TIMEOUT: "
+        f"{estatisticas['consultas_falha']}"
+    )
+
+    linhas.append(
         f"RESULTADOS ANALISADOS: "
         f"{estatisticas['analisados']}"
     )
@@ -1424,7 +1534,7 @@ def main():
     print("=" * 80)
 
     print(
-        "BUSCADOR DIECAST - PREMIUM NACIONAL V2"
+        "BUSCADOR DIECAST - PREMIUM NACIONAL V3"
     )
 
     print(
@@ -1440,7 +1550,7 @@ def main():
     )
 
     print(
-        "BUSCAS SEARCHAPI:",
+        "BUSCAS PLANEJADAS:",
         len(BUSCAS)
     )
 
@@ -1449,6 +1559,8 @@ def main():
     candidatos = []
 
     estatisticas = {
+        "consultas_ok": 0,
+        "consultas_falha": 0,
         "analisados": 0,
         "lojas": 0,
         "produtos": 0,
@@ -1473,11 +1585,27 @@ def main():
 
         print()
 
-        print(termo)
-
-        resultados = buscar_shopping(
+        print(
             termo
         )
+
+        resultados, sucesso = (
+            buscar_shopping(
+                termo
+            )
+        )
+
+        if sucesso:
+
+            estatisticas[
+                "consultas_ok"
+            ] += 1
+
+        else:
+
+            estatisticas[
+                "consultas_falha"
+            ] += 1
 
         print(
             "RESULTADOS:",
@@ -1486,10 +1614,12 @@ def main():
 
         estatisticas[
             "analisados"
-        ] += len(resultados)
+        ] += len(
+            resultados
+        )
 
         # ====================================================
-        # ANALISAR
+        # RESULTADOS
         # ====================================================
 
         for item in resultados:
@@ -1554,20 +1684,29 @@ def main():
 
             oferta = {
                 "titulo": titulo,
+
                 "marca": marca,
+
                 "serie": serie,
+
                 "vendedor": pegar_vendedor(
                     item
                 ),
+
                 "preco": preco,
+
                 "preco_original": antigo,
+
                 "desconto": desconto,
+
                 "link": pegar_link(
                     item
                 ),
+
                 "product_id": item.get(
                     "product_id"
                 ),
+
                 "product_token": item.get(
                     "product_token"
                 ),
@@ -1582,7 +1721,9 @@ def main():
             oferta[
                 "classificacao"
             ] = classificar(
-                oferta["score"]
+                oferta[
+                    "score"
+                ]
             )
 
             candidatos.append(
@@ -1590,7 +1731,7 @@ def main():
             )
 
     # ========================================================
-    # REMOVER DUPLICADOS
+    # DEDUPLICAÇÃO
     # ========================================================
 
     unicos = {}
@@ -1607,7 +1748,9 @@ def main():
 
         if existente is None:
 
-            unicos[chave] = oferta
+            unicos[
+                chave
+            ] = oferta
 
         elif (
             oferta["preco"]
@@ -1615,23 +1758,25 @@ def main():
             existente["preco"]
         ):
 
-            unicos[chave] = oferta
+            unicos[
+                chave
+            ] = oferta
 
     ofertas = list(
         unicos.values()
     )
 
     # ========================================================
-    # FILTRO FINAL DE QUALIDADE
+    # QUALIDADE FINAL
     #
-    # Não mandamos simplesmente porque passou
-    # no preço máximo.
+    # 55 é o mínimo.
+    # Então "interessante" agora precisa ter alguma qualidade.
     # ========================================================
 
     ofertas = [
         oferta
         for oferta in ofertas
-        if oferta["score"] >= 45
+        if oferta["score"] >= 55
     ]
 
     # ========================================================
@@ -1659,7 +1804,6 @@ def main():
 
     historico = carregar_historico()
 
-    # Todo novo dia começa do zero.
     if historico.get(
         "data"
     ) != hoje:
@@ -1678,18 +1822,18 @@ def main():
         historico[
             "ofertas"
         ][chave] = {
-            "titulo": oferta[
-                "titulo"
-            ],
-            "preco": oferta[
-                "preco"
-            ],
-            "score": oferta[
-                "score"
-            ],
-            "loja": oferta[
-                "vendedor"
-            ],
+
+            "titulo":
+                oferta["titulo"],
+
+            "preco":
+                oferta["preco"],
+
+            "score":
+                oferta["score"],
+
+            "loja":
+                oferta["vendedor"],
         }
 
     salvar_historico(
@@ -1697,7 +1841,7 @@ def main():
     )
 
     # ========================================================
-    # LINKS PARA AFILIADO
+    # LINKS
     # ========================================================
 
     with open(
@@ -1759,12 +1903,16 @@ def main():
 
         print(
             "LOJA:",
-            oferta["vendedor"]
+            oferta[
+                "vendedor"
+            ]
         )
 
         print(
             "MARCA:",
-            oferta["marca"]
+            oferta[
+                "marca"
+            ]
         )
 
         if oferta["serie"]:
@@ -1795,7 +1943,9 @@ def main():
             print(
                 "DESCONTO REAL:",
                 str(
-                    oferta["desconto"]
+                    oferta[
+                        "desconto"
+                    ]
                 )
                 + "%"
             )
@@ -1853,7 +2003,9 @@ def main():
 
     print("=" * 80)
 
-    print("RESUMO")
+    print(
+        "RESUMO"
+    )
 
     print("=" * 80)
 
@@ -1876,8 +2028,17 @@ def main():
     print()
 
     print(
-        "CRÉDITOS SEARCHAPI CONSUMIDOS:",
-        len(BUSCAS)
+        "CONSULTAS COM STATUS 200:",
+        estatisticas[
+            "consultas_ok"
+        ]
+    )
+
+    print(
+        "CONSULTAS COM FALHA/TIMEOUT:",
+        estatisticas[
+            "consultas_falha"
+        ]
     )
 
     print(
@@ -1910,7 +2071,9 @@ def main():
 
     print(
         "OFERTAS ENVIADAS:",
-        len(ofertas)
+        len(
+            ofertas
+        )
     )
 
     print("=" * 80)
