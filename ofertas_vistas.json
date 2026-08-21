@@ -113,5 +113,45 @@
     "ultima_data_enviada": "2026-08-21",
     "menor_preco_dia": 82.0,
     "menor_preco_historico": 82.0
+  },
+  "https://www.amazon.com.br/Hot-Wheels-Culture-Vehicles-FPY86-957M/dp/B072JC91KY": {
+    "titulo": "Hot Wheels Car Culture 2022 Exotic Envy Set of 4 Diecast ...",
+    "marca": "Hot Wheels",
+    "loja": "Amazon",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 59.61,
+    "menor_preco_historico": 59.61
+  },
+  "https://www.amazon.com.br/Hot-Wheels-brinquedo-met%C3%A1lico-colecion%C3%A1vel/dp/B0D7PV1DST": {
+    "titulo": "Hot Wheels Premium Car Culture Circuit Legends Porsche ...",
+    "marca": "Hot Wheels",
+    "loja": "Amazon",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 83.2,
+    "menor_preco_historico": 83.2
+  },
+  "https://www.mercadolivre.com.br/pack-hot-wheels-premium-car-culture-porsche-993-e-718-cayman-de-metal/p/MLB57432456": {
+    "titulo": "Pack Hot Wheels Premium Car Culture Porsche 993 e 718 ...",
+    "marca": "Hot Wheels",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 95.32,
+    "menor_preco_historico": 95.32
+  },
+  "https://www.mercadolivre.com.br/mini-gt-kaido-house-nissan-skyline-gt-r-r34-policia-164-preto-metal/p/MLB40584344": {
+    "titulo": "Mini GT Kaido House Nissan Skyline GT-R R34 Polícia 1 ...",
+    "marca": "Kaido House",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 212.79,
+    "menor_preco_historico": 212.79
+  },
+  "https://www.mercadolivre.com.br/mini-gt-mazda-rx-7-lb-super-silhueta-990-vermelha/p/MLB59403404": {
+    "titulo": "Mini GT Mazda Rx-7 LB-Super Silhueta #990 Vermelha",
+    "marca": "Mini GT",
+    "loja": "Mercado Livre",
+    "ultima_data_enviada": "2026-08-21",
+    "menor_preco_dia": 136.8,
+    "menor_preco_historico": 136.8
   }
 }
