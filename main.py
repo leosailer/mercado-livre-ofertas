@@ -3,6 +3,7 @@ import re
 import json
 import ssl
 import smtplib
+import statistics
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from email.message import EmailMessage
@@ -22,17 +23,34 @@ EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
 URL = "https://serpapi.com/search.json"
 
 ARQUIVO_HISTORICO = Path("ofertas_vistas.json")
-ARQUIVO_LINKS_AFILIADO = Path("links_para_afiliado.txt")
+ARQUIVO_ML = Path("links_para_afiliado.txt")
+ARQUIVO_AMAZON = Path("links_amazon.txt")
 
 FUSO_BRASIL = ZoneInfo("America/Sao_Paulo")
 
-HOJE = datetime.now(
-    FUSO_BRASIL
-).date().isoformat()
+AGORA = datetime.now(FUSO_BRASIL)
+HOJE = AGORA.date().isoformat()
 
 
 # =========================================================
-# CARROS DE INTERESSE
+# LOJAS
+# =========================================================
+
+DOMINIOS = (
+    "(site:mercadolivre.com.br OR site:amazon.com.br)"
+)
+
+EXCLUSAO_INTERNACIONAL_BUSCA = (
+    '-"compra internacional" '
+    '-"envio internacional" '
+    '-"frete internacional" '
+    '-"international shopping" '
+    '-"taxas de importação" '
+)
+
+
+# =========================================================
+# CARROS TOP
 # =========================================================
 
 CARROS_TOP = [
@@ -56,93 +74,123 @@ CARROS_TOP = [
     "Mitsubishi Lancer Evolution",
     "Subaru Impreza",
     "Ford Mustang",
-    "Corvette"
+    "Corvette",
+    "Lexus",
+    "Lotus"
 ]
 
 
 # =========================================================
-# MODELOS QUENTES / TENDÊNCIAS
+# TERMOS QUENTES / RECENTES
 # =========================================================
 
-TENDENCIAS_QUENTES = [
-    ("Ferrari F40 RLC", ["ferrari", "f40", "rlc"]),
-    ("Ferrari Testarossa", ["ferrari", "testarossa"]),
-    ("Ferrari 250 GTO", ["ferrari", "250", "gto"]),
-    ("Ferrari Enzo", ["ferrari", "enzo"]),
-    ("Ferrari 499P", ["ferrari", "499p"]),
-    ("Ferrari F50", ["ferrari", "f50"]),
-
-    ("Porsche 993 GT2", ["porsche", "993", "gt2"]),
-    ("Porsche 917K", ["porsche", "917k"]),
-    ("Porsche Carrera GT", ["porsche", "carrera", "gt"]),
-    ("Porsche 911 Carrera RS", ["porsche", "911", "carrera", "rs"]),
-    ("Porsche 911 GT3 RS", ["porsche", "911", "gt3", "rs"]),
-
-    ("Nissan Skyline BNR32", ["nissan", "skyline", "bnr32"]),
-    ("Nissan Skyline R33", ["nissan", "skyline", "r33"]),
-    ("NISMO 270R", ["nismo", "270r"]),
-
-    ("Toyota Supra VeilSide", ["toyota", "supra", "veilside"]),
-    ("Lamborghini Countach", ["lamborghini", "countach"]),
-    ("Mazda RX-7 RE-Amemiya", ["mazda", "rx-7", "re-amemiya"]),
-    ("Ford Mustang GTD", ["ford", "mustang", "gtd"]),
-    ("Koenigsegg Agera RS", ["koenigsegg", "agera", "rs"])
+MODELOS_QUENTES = [
+    "Ferrari F40",
+    "Ferrari Testarossa",
+    "Ferrari 250 GTO",
+    "Ferrari F50",
+    "Ferrari 499P",
+    "Porsche 911 GT3 RS",
+    "Porsche 993 GT2",
+    "Porsche Carrera GT",
+    "Nissan Skyline R32",
+    "Nissan Skyline R33",
+    "Nissan Skyline R34",
+    "Toyota Supra",
+    "Mazda RX-7",
+    "Koenigsegg Agera RS",
+    "Koenigsegg One:1",
+    "Lamborghini Countach",
+    "Lamborghini Huracan",
+    "Ford Mustang GTD",
+    "Porsche 928",
+    "Toyota GR Corolla",
+    "Mazda RX-7 VeilSide",
+    "Skyline R32 Widebody"
 ]
 
 
 # =========================================================
-# BUSCAS
+# BUSCAS REFINADAS
 # =========================================================
 
 BUSCAS = [
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" '
+    # 1 - HOT WHEELS PREMIUM BARATOS
+    f'{DOMINIOS} '
+    '"Hot Wheels Premium" '
     '("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR '
-    '"BMW" OR "Mercedes" OR "Audi") '
+    '"BMW" OR "Mercedes" OR "Audi" OR "Skyline" OR "Supra") '
     '("R$ 49" OR "R$ 55" OR "R$ 59" OR "R$ 65" OR "R$ 69" '
-    'OR oferta OR desconto) '
-    '-usado -loose',
+    'OR promoção OR oferta OR desconto) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br '
-    '("Hot Wheels Car Culture" OR "Hot Wheels Boulevard" OR '
-    '"Hot Wheels Silver Series" OR "Hot Wheels Pop Culture") '
-    '("Ferrari" OR "Porsche" OR "Skyline" OR "Supra" OR "RX-7") '
-    '("R$ 49" OR "R$ 59" OR "R$ 69" OR oferta) '
-    '-usado -loose',
+    # 2 - LINHAS ESPECIAIS HOT WHEELS
+    f'{DOMINIOS} '
+    '("Hot Wheels Silver Series" OR "Hot Wheels Car Culture" OR '
+    '"Hot Wheels Boulevard" OR "Hot Wheels Pop Culture") '
+    '("Ferrari" OR "Porsche" OR "Skyline" OR "Supra" OR '
+    '"RX-7" OR "Lamborghini") '
+    '(oferta OR promoção OR desconto OR "R$ 69" OR "R$ 79") '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" "Ferrari" '
-    '-usado -loose',
+    # 3 - FERRARI / PORSCHE
+    f'{DOMINIOS} '
+    '("Hot Wheels Premium" OR "Silver Series") '
+    '("Ferrari" OR "Porsche") '
+    '(oferta OR promoção OR desconto OR barato OR "15% OFF" OR "20% OFF") '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br "Hot Wheels Premium" "Porsche" '
-    '-usado -loose',
-
-    'site:mercadolivre.com.br "Hot Wheels Premium" '
-    '("Skyline" OR "Supra" OR "RX-7") '
-    '-usado -loose',
-
-    'site:mercadolivre.com.br "Mini GT" '
+    # 4 - MINI GT BARATO
+    f'{DOMINIOS} '
+    '"Mini GT" '
     '("Ferrari" OR "Porsche" OR "Lamborghini" OR "McLaren" OR '
-    '"Skyline" OR "GT-R" OR "Supra" OR "RX-7") '
-    '-usado -loose',
+    '"Skyline" OR "GT-R" OR "Supra" OR "RX-7" OR "BMW") '
+    '("R$ 99" OR "R$ 109" OR "R$ 119" OR "R$ 129" OR '
+    '"R$ 139" OR "R$ 149" OR oferta OR promoção) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br "Mini GT" '
-    '("R$ 99" OR "R$ 109" OR "R$ 119" OR '
-    '"R$ 129" OR "R$ 139" OR "R$ 149") '
-    '-usado -loose',
+    # 5 - DESCONTOS FORTES
+    f'{DOMINIOS} '
+    '("Hot Wheels Premium" OR "Mini GT" OR "Kaido House" OR '
+    '"Tarmac Works" OR "Pop Race" OR "Inno64") '
+    '("15% OFF" OR "20% OFF" OR "25% OFF" OR "30% OFF" OR '
+    '"40% OFF" OR promoção OR desconto OR oferta relâmpago) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br "Kaido House" '
-    '("oferta" OR desconto OR promoção) '
-    '-usado -loose',
+    # 6 - TARMAC / POP RACE / INNO64
+    f'{DOMINIOS} '
+    '("Tarmac Works" OR "Pop Race" OR "Inno64") '
+    '("Ferrari" OR "Porsche" OR "Skyline" OR "Supra" OR '
+    '"RX-7" OR "Koenigsegg" OR "McLaren") '
+    '(oferta OR promoção OR desconto OR barato) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br "Tarmac Works" '
-    '("oferta" OR desconto OR promoção) '
-    '-usado -loose',
+    # 7 - LANÇAMENTOS / MODELOS QUENTES
+    f'{DOMINIOS} '
+    '("Hot Wheels Premium" OR "Mini GT" OR "Tarmac Works") '
+    '("Ferrari F40" OR "Ferrari Testarossa" OR "Porsche 911 GT3" OR '
+    '"Skyline R32" OR "Skyline R34" OR "Mazda RX-7 VeilSide" OR '
+    '"Koenigsegg" OR "Toyota GR Corolla") '
+    '(2026 OR lançamento OR novidade OR oferta) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}',
 
-    'site:mercadolivre.com.br '
-    '("Pop Race" OR "Inno64" OR "Greenlight" OR '
-    '"M2 Machines" OR "Tomica Premium" OR "Majorette Premium") '
-    '("oferta" OR desconto OR promoção) '
-    '-usado -loose'
+    # 8 - OUTRAS MARCAS PREMIUM
+    f'{DOMINIOS} '
+    '("Majorette Premium" OR "Tomica Premium" OR "Greenlight" OR '
+    '"M2 Machines" OR "Matchbox Collectors" OR "Matchbox Moving Parts") '
+    '("Ferrari" OR "Porsche" OR "Lamborghini" OR "Skyline" OR '
+    '"Supra" OR "BMW" OR "Mustang") '
+    '(oferta OR promoção OR desconto OR barato) '
+    '-usado -loose '
+    f'{EXCLUSAO_INTERNACIONAL_BUSCA}'
 ]
 
 
@@ -151,25 +199,37 @@ BUSCAS = [
 # =========================================================
 
 PALAVRAS_EXCLUIR = [
-    "expositor",
-    "display",
-    "estante",
-    "prateleira",
-    "garagem",
-    "diorama",
-    "adesivo",
-    "roda avulsa",
-    "pneu avulso",
-    "case",
-    "caixa organizadora",
-    "suporte",
-    "protetor blister",
     "usado",
     "loose",
     "aberto",
     "sem blister",
     "sem embalagem",
-    "avariado"
+    "avariado",
+    "expositor",
+    "display",
+    "diorama",
+    "garagem",
+    "estante",
+    "prateleira",
+    "adesivo",
+    "roda avulsa",
+    "pneu avulso",
+    "suporte",
+    "protetor blister"
+]
+
+
+TERMOS_INTERNACIONAIS = [
+    "compra internacional",
+    "envio internacional",
+    "frete internacional",
+    "produto internacional",
+    "international shopping",
+    "taxas de importação",
+    "taxa de importação",
+    "enviado dos estados unidos",
+    "enviado do exterior",
+    "envio do exterior"
 ]
 
 
@@ -178,11 +238,11 @@ HOT_WHEELS_PERMITIDOS = [
     "silver series",
     "boulevard",
     "car culture",
+    "pop culture",
     "team transport",
     "rlc",
     "collector",
     "collectors",
-    "pop culture",
     "edição especial",
     "edicao especial",
     "anniversary",
@@ -197,66 +257,20 @@ FAIXAS_VALIDAS = {
     "Mini GT": (40, 500),
     "Kaido House": (70, 700),
     "Tarmac Works": (50, 700),
+    "Pop Race": (50, 700),
+    "Inno64": (50, 700),
     "Majorette": (20, 500),
     "Greenlight": (40, 600),
     "M2 Machines": (40, 700),
-    "Tomica": (30, 600),
-    "Pop Race": (50, 700),
-    "Inno64": (50, 700)
+    "Tomica": (30, 600)
 }
 
 
 # =========================================================
-# HISTÓRICO
+# UTILIDADES
 # =========================================================
 
-def carregar_historico():
-
-    if not ARQUIVO_HISTORICO.exists():
-        return {}
-
-    try:
-
-        with open(
-            ARQUIVO_HISTORICO,
-            "r",
-            encoding="utf-8"
-        ) as arquivo:
-
-            return json.load(arquivo)
-
-    except Exception as erro:
-
-        print(
-            "AVISO: erro ao carregar histórico:",
-            erro
-        )
-
-        return {}
-
-
-def salvar_historico(historico):
-
-    with open(
-        ARQUIVO_HISTORICO,
-        "w",
-        encoding="utf-8"
-    ) as arquivo:
-
-        json.dump(
-            historico,
-            arquivo,
-            ensure_ascii=False,
-            indent=2
-        )
-
-
-# =========================================================
-# FUNÇÕES BÁSICAS
-# =========================================================
-
-def texto_normalizado(texto):
-
+def normalizar(texto):
     return re.sub(
         r"\s+",
         " ",
@@ -264,9 +278,64 @@ def texto_normalizado(texto):
     ).strip()
 
 
+def identificar_loja(link):
+    link = normalizar(link)
+
+    if "amazon.com.br" in link:
+        return "Amazon"
+
+    if "mercadolivre.com.br" in link:
+        return "Mercado Livre"
+
+    return "Outra"
+
+
+def link_valido(link):
+
+    if not link:
+        return False
+
+    if "amazon.com.br" in link:
+        return (
+            "/dp/" in link
+            or "/gp/product/" in link
+        )
+
+    if "mercadolivre.com.br" in link:
+        return (
+            "/p/" in link
+            or "/up/" in link
+            or "produto.mercadolivre.com.br/MLB-" in link
+        )
+
+    return False
+
+
+def eh_internacional(titulo, trecho):
+
+    combinado = normalizar(
+        f"{titulo} {trecho}"
+    )
+
+    return any(
+        termo in combinado
+        for termo in TERMOS_INTERNACIONAIS
+    )
+
+
+def deve_excluir(titulo):
+
+    t = normalizar(titulo)
+
+    return any(
+        palavra in t
+        for palavra in PALAVRAS_EXCLUIR
+    )
+
+
 def identificar_marca(titulo, link):
 
-    combinado = texto_normalizado(
+    combinado = normalizar(
         f"{titulo} {link}"
     )
 
@@ -306,70 +375,9 @@ def identificar_marca(titulo, link):
     return "Outra"
 
 
-def identificar_carros_top(titulo):
-
-    t = texto_normalizado(titulo)
-
-    encontrados = []
-
-    for carro in CARROS_TOP:
-
-        if carro.lower() in t:
-            encontrados.append(carro)
-
-    return encontrados
-
-
-def identificar_tendencia(titulo):
-
-    t = texto_normalizado(titulo)
-
-    for nome, termos in TENDENCIAS_QUENTES:
-
-        if all(
-            termo.lower() in t
-            for termo in termos
-        ):
-
-            return nome
-
-    return None
-
-
-# =========================================================
-# VALIDAÇÕES
-# =========================================================
-
-def link_valido(link):
-
-    formatos = [
-        "/p/",
-        "/up/",
-        "produto.mercadolivre.com.br/MLB-"
-    ]
-
-    return (
-        bool(link)
-        and any(
-            formato in link
-            for formato in formatos
-        )
-    )
-
-
-def deve_excluir(titulo):
-
-    t = texto_normalizado(titulo)
-
-    return any(
-        palavra in t
-        for palavra in PALAVRAS_EXCLUIR
-    )
-
-
 def hot_wheels_valido(titulo, link):
 
-    combinado = texto_normalizado(
+    combinado = normalizar(
         f"{titulo} {link}"
     )
 
@@ -377,10 +385,50 @@ def hot_wheels_valido(titulo, link):
         return True
 
     return any(
-        palavra in combinado
-        for palavra in HOT_WHEELS_PERMITIDOS
+        termo in combinado
+        for termo in HOT_WHEELS_PERMITIDOS
     )
 
+
+def identificar_carros_top(titulo):
+
+    t = normalizar(titulo)
+
+    return [
+        carro
+        for carro in CARROS_TOP
+        if carro.lower() in t
+    ]
+
+
+def identificar_tendencia(titulo):
+
+    t = normalizar(titulo)
+
+    for modelo in MODELOS_QUENTES:
+
+        palavras = normalizar(modelo).split()
+
+        if len(palavras) >= 2:
+
+            encontrados = sum(
+                1
+                for palavra in palavras
+                if palavra in t
+            )
+
+            if encontrados >= min(
+                3,
+                len(palavras)
+            ):
+                return modelo
+
+    return None
+
+
+# =========================================================
+# PREÇO
+# =========================================================
 
 def preco_valido(marca, preco):
 
@@ -395,30 +443,26 @@ def preco_valido(marca, preco):
     return minimo <= preco <= maximo
 
 
-# =========================================================
-# PREÇO
-# =========================================================
-
 def extrair_precos_texto(texto):
 
-    valores = re.findall(
+    encontrados = re.findall(
         r"R\$\s*([\d\.]+,\d{2})",
         texto or ""
     )
 
     precos = []
 
-    for valor in valores:
+    for valor in encontrados:
 
         try:
 
-            numero = float(
-                valor
-                .replace(".", "")
-                .replace(",", ".")
+            precos.append(
+                float(
+                    valor
+                    .replace(".", "")
+                    .replace(",", ".")
+                )
             )
-
-            precos.append(numero)
 
         except:
             pass
@@ -483,12 +527,12 @@ def detectar_desconto(
 
         if resultado:
 
-            percentual = float(
+            valor = float(
                 resultado.group(1)
             )
 
-            if 0 < percentual <= 80:
-                return percentual
+            if 0 < valor <= 80:
+                return valor
 
 
     precos = extrair_precos_texto(
@@ -496,31 +540,19 @@ def detectar_desconto(
     )
 
     candidatos = [
-        preco
-        for preco in precos
-        if (
-            preco_atual < preco
-            <= preco_atual * 2.5
-        )
+        p for p in precos
+        if preco_atual < p <= preco_atual * 2.2
     ]
 
     if not candidatos:
         return None
 
-
-    preco_anterior = max(
-        candidatos
-    )
-
+    anterior = max(candidatos)
 
     desconto = (
-        (
-            preco_anterior
-            - preco_atual
-        )
-        / preco_anterior
+        (anterior - preco_atual)
+        / anterior
     ) * 100
-
 
     if 5 <= desconto <= 80:
         return desconto
@@ -529,218 +561,330 @@ def detectar_desconto(
 
 
 # =========================================================
-# RANKING
+# COMPARAÇÃO DE PREÇO
 # =========================================================
 
-def calcular_ranking(item):
+def palavras_modelo(titulo):
+
+    texto = normalizar(titulo)
+
+    remover = [
+        "hot wheels",
+        "mini gt",
+        "kaido house",
+        "tarmac works",
+        "pop race",
+        "inno64",
+        "matchbox",
+        "majorette",
+        "greenlight",
+        "m2 machines",
+        "tomica",
+        "premium",
+        "miniatura",
+        "diecast",
+        "carrinho",
+        "1:64",
+        "1/64"
+    ]
+
+    for palavra in remover:
+        texto = texto.replace(
+            palavra,
+            " "
+        )
+
+    texto = re.sub(
+        r"[^a-z0-9áéíóúãõâêôç\s\-]",
+        " ",
+        texto
+    )
+
+    ignorar = {
+        "para",
+        "com",
+        "sem",
+        "modelo",
+        "carro",
+        "produto",
+        "novo",
+        "coleção",
+        "colecao"
+    }
+
+    return {
+        palavra
+        for palavra in texto.split()
+        if (
+            len(palavra) >= 3
+            and palavra not in ignorar
+        )
+    }
+
+
+def calcular_mediana_mercado(
+    item,
+    resultados
+):
+
+    palavras = palavras_modelo(
+        item["titulo"]
+    )
+
+    precos = []
+
+    for outro in resultados:
+
+        if outro is item:
+            continue
+
+        if outro["marca"] != item["marca"]:
+            continue
+
+        if outro["preco"] is None:
+            continue
+
+        outras = palavras_modelo(
+            outro["titulo"]
+        )
+
+        comuns = palavras.intersection(
+            outras
+        )
+
+        if len(comuns) >= 2:
+            precos.append(
+                outro["preco"]
+            )
+
+    if len(precos) < 2:
+        return None
+
+    # remove valores muito fora do conjunto
+    mediana = statistics.median(
+        precos
+    )
+
+    filtrados = [
+        preco
+        for preco in precos
+        if (
+            mediana * 0.45
+            <= preco
+            <= mediana * 2
+        )
+    ]
+
+    if len(filtrados) < 2:
+        return None
+
+    return statistics.median(
+        filtrados
+    )
+
+
+# =========================================================
+# CLASSIFICAÇÃO / RANKING
+# =========================================================
+
+def classificar(item):
 
     marca = item["marca"]
     preco = item["preco"]
     desconto = item["desconto"]
+    mediana = item.get("mediana")
 
-    # -----------------------------------------------------
-    # IMPERDÍVEL
-    # -----------------------------------------------------
+    status = None
 
+    # Hot Wheels muito barato
     if (
         marca == "Hot Wheels"
         and preco is not None
         and preco < 69
     ):
 
-        return (
-            "🚨 IMPERDÍVEL",
-            0
+        status = (
+            "HOT WHEELS PREMIUM/SILVER "
+            "ABAIXO DE R$69"
         )
 
+    # desconto forte
+    elif (
+        desconto is not None
+        and desconto >= 15
+    ):
 
-    if (
+        status = (
+            "DESCONTO DE 15% OU MAIS"
+        )
+
+    # Hot Wheels até 99
+    elif (
+        marca == "Hot Wheels"
+        and preco is not None
+        and preco < 99
+    ):
+
+        status = (
+            "HOT WHEELS PREMIUM/SILVER "
+            "ABAIXO DE R$99"
+        )
+
+    # Mini GT
+    elif (
         marca == "Mini GT"
         and preco is not None
+        and preco < 150
+    ):
+
+        status = (
+            "MINI GT ABAIXO DE R$150"
+        )
+
+    # abaixo do mercado
+    elif (
+        mediana is not None
+        and preco is not None
+        and preco <= mediana * 0.85
+    ):
+
+        status = (
+            "PREÇO 15%+ ABAIXO DE "
+            "ANÚNCIOS SEMELHANTES"
+        )
+
+    if status is None:
+        return None
+
+
+    # RANKING
+
+    if (
+        marca == "Hot Wheels"
+        and preco < 69
+    ):
+
+        ranking = "🚨 IMPERDÍVEL"
+        ordem = 0
+
+    elif (
+        marca == "Mini GT"
         and preco < 110
     ):
 
-        return (
-            "🚨 IMPERDÍVEL",
-            0
-        )
+        ranking = "🚨 IMPERDÍVEL"
+        ordem = 0
 
-
-    if (
+    elif (
         desconto is not None
         and desconto >= 30
     ):
 
-        return (
-            "🚨 IMPERDÍVEL",
-            0
-        )
+        ranking = "🚨 IMPERDÍVEL"
+        ordem = 0
 
-
-    # -----------------------------------------------------
-    # BOA OFERTA
-    # -----------------------------------------------------
-
-    if (
-        marca == "Hot Wheels"
-        and preco is not None
-        and preco < 89
-    ):
-
-        return (
-            "🔥 BOA OFERTA",
-            1
-        )
-
-
-    if (
-        marca == "Mini GT"
-        and preco is not None
-        and preco < 130
-    ):
-
-        return (
-            "🔥 BOA OFERTA",
-            1
-        )
-
-
-    if (
+    elif (
         desconto is not None
         and desconto >= 20
     ):
 
-        return (
-            "🔥 BOA OFERTA",
-            1
-        )
+        ranking = "🔥 BOA OFERTA"
+        ordem = 1
+
+    elif (
+        mediana is not None
+        and preco <= mediana * 0.80
+    ):
+
+        ranking = "🔥 BOA OFERTA"
+        ordem = 1
+
+    elif (
+        marca == "Hot Wheels"
+        and preco < 89
+    ):
+
+        ranking = "🔥 BOA OFERTA"
+        ordem = 1
+
+    elif (
+        marca == "Mini GT"
+        and preco < 130
+    ):
+
+        ranking = "🔥 BOA OFERTA"
+        ordem = 1
+
+    else:
+
+        ranking = "👀 INTERESSANTE"
+        ordem = 2
 
 
-    # -----------------------------------------------------
-    # INTERESSANTE
-    # -----------------------------------------------------
+    item["status"] = status
+    item["ranking"] = ranking
+    item["ranking_ordem"] = ordem
 
-    return (
-        "👀 INTERESSANTE",
-        2
-    )
+    return item
 
 
 # =========================================================
-# WHATSAPP
+# HISTÓRICO
 # =========================================================
 
-def gerar_texto_whatsapp(item):
+def carregar_historico():
 
-    linhas = []
+    if not ARQUIVO_HISTORICO.exists():
+        return {}
 
-    linhas.append(
-        item["ranking"]
-    )
+    try:
 
-    linhas.append("")
+        with open(
+            ARQUIVO_HISTORICO,
+            "r",
+            encoding="utf-8"
+        ) as arquivo:
 
-
-    if (
-        item.get("tipo_alerta")
-        == "QUEDA_PRECO"
-    ):
-
-        linhas.append(
-            "📉 *PREÇO CAIU!*"
-        )
-
-        linhas.append("")
-
-
-    linhas.append(
-        f"🏎️ *{item['titulo']}*"
-    )
-
-    linhas.append("")
-
-
-    if (
-        item.get("tipo_alerta")
-        == "QUEDA_PRECO"
-    ):
-
-        anterior = item.get(
-            "preco_anterior_encontrado"
-        )
-
-        if anterior is not None:
-
-            linhas.append(
-                f"❌ Antes: R$ {anterior:.2f}"
+            return json.load(
+                arquivo
             )
 
-
-    linhas.append(
-        f"💰 *R$ {item['preco']:.2f}*"
-    )
+    except:
+        return {}
 
 
-    if item["desconto"] is not None:
+def salvar_historico(historico):
 
-        linhas.append(
-            f"🔥 Desconto identificado: "
-            f"*{item['desconto']:.0f}%*"
+    with open(
+        ARQUIVO_HISTORICO,
+        "w",
+        encoding="utf-8"
+    ) as arquivo:
+
+        json.dump(
+            historico,
+            arquivo,
+            ensure_ascii=False,
+            indent=2
         )
-
-
-    if item["tendencia"]:
-
-        linhas.append(
-            f"📈 Modelo em alta: "
-            f"{item['tendencia']}"
-        )
-
-
-    linhas.append("")
-
-    linhas.append(
-        "🛒 Comprar:"
-    )
-
-    linhas.append(
-        item["link"]
-    )
-
-    linhas.append("")
-
-    linhas.append(
-        "⚠️ Preço pode mudar a qualquer momento."
-    )
-
-
-    return "\n".join(
-        linhas
-    )
 
 
 # =========================================================
 # E-MAIL
 # =========================================================
 
-def enviar_mensagem_email(
+def enviar_email(
     assunto,
     corpo
 ):
 
-    if not EMAIL_DESTINO:
+    if (
+        not EMAIL_DESTINO
+        or not GMAIL_APP_PASSWORD
+    ):
 
         print(
-            "ERRO: EMAIL_DESTINO não configurado."
-        )
-
-        return False
-
-
-    if not GMAIL_APP_PASSWORD:
-
-        print(
-            "ERRO: GMAIL_APP_PASSWORD não configurado."
+            "Credenciais de e-mail ausentes."
         )
 
         return False
@@ -777,7 +921,6 @@ def enviar_mensagem_email(
                 mensagem
             )
 
-
         print(
             "EMAIL ENVIADO COM SUCESSO."
         )
@@ -795,263 +938,8 @@ def enviar_mensagem_email(
         return False
 
 
-def enviar_email_ofertas(ofertas):
-
-    imperdiveis = sum(
-        1
-        for item in ofertas
-        if item["ranking"] == "🚨 IMPERDÍVEL"
-    )
-
-    boas = sum(
-        1
-        for item in ofertas
-        if item["ranking"] == "🔥 BOA OFERTA"
-    )
-
-    interessantes = sum(
-        1
-        for item in ofertas
-        if item["ranking"] == "👀 INTERESSANTE"
-    )
-
-
-    if imperdiveis > 0:
-
-        assunto = (
-            f"🚨 {imperdiveis} oferta(s) IMPERDÍVEL(is) Diecast!"
-        )
-
-    else:
-
-        assunto = (
-            f"🔥 {len(ofertas)} nova(s) oferta(s) Diecast"
-        )
-
-
-    corpo = []
-
-    corpo.append(
-        "🚗 BUSCADOR DIECAST"
-    )
-
-    corpo.append("")
-
-    corpo.append(
-        f"Data da busca: {HOJE}"
-    )
-
-    corpo.append("")
-
-    corpo.append(
-        f"🚨 Imperdíveis: {imperdiveis}"
-    )
-
-    corpo.append(
-        f"🔥 Boas ofertas: {boas}"
-    )
-
-    corpo.append(
-        f"👀 Interessantes: {interessantes}"
-    )
-
-    corpo.append("")
-
-    corpo.append(
-        "=" * 60
-    )
-
-
-    for numero, item in enumerate(
-        ofertas,
-        start=1
-    ):
-
-        corpo.append("")
-        corpo.append(
-            f"{numero}. {item['ranking']}"
-        )
-
-        corpo.append("")
-
-
-        if (
-            item.get("tipo_alerta")
-            == "NOVA_OFERTA_DO_DIA"
-        ):
-
-            corpo.append(
-                "🌅 OFERTA DO DIA"
-            )
-
-
-        elif (
-            item.get("tipo_alerta")
-            == "QUEDA_PRECO"
-        ):
-
-            corpo.append(
-                "📉 PREÇO CAIU NOVAMENTE"
-            )
-
-
-        elif (
-            item.get("tipo_alerta")
-            == "NOVA_OFERTA"
-        ):
-
-            corpo.append(
-                "🆕 NOVA OFERTA"
-            )
-
-
-        corpo.append(
-            item["status"]
-        )
-
-
-        corpo.append(
-            f"Marca: {item['marca']}"
-        )
-
-
-        if item["carros_top"]:
-
-            corpo.append(
-                "Carro top: "
-                + ", ".join(
-                    item["carros_top"]
-                )
-            )
-
-
-        if item["tendencia"]:
-
-            corpo.append(
-                "Tendência: "
-                + item["tendencia"]
-            )
-
-
-        corpo.append(
-            f"Produto: {item['titulo']}"
-        )
-
-
-        if (
-            item.get("tipo_alerta")
-            == "QUEDA_PRECO"
-        ):
-
-            anterior = item.get(
-                "preco_anterior_encontrado"
-            )
-
-            if anterior is not None:
-
-                corpo.append(
-                    f"Preço anterior hoje: "
-                    f"R$ {anterior:.2f}"
-                )
-
-
-        corpo.append(
-            f"Preço atual: "
-            f"R$ {item['preco']:.2f}"
-        )
-
-
-        if item["desconto"] is not None:
-
-            corpo.append(
-                f"Desconto: "
-                f"{item['desconto']:.1f}%"
-            )
-
-
-        corpo.append("")
-
-        corpo.append(
-            "LINK ORIGINAL:"
-        )
-
-        corpo.append(
-            item["link"]
-        )
-
-
-        corpo.append("")
-
-        corpo.append(
-            "📲 MENSAGEM PRONTA PARA WHATSAPP"
-        )
-
-        corpo.append("")
-
-        corpo.append(
-            gerar_texto_whatsapp(
-                item
-            )
-        )
-
-
-        corpo.append("")
-
-        corpo.append(
-            "=" * 60
-        )
-
-
-    corpo.append("")
-
-    corpo.append(
-        "Antes de publicar, troque o link original "
-        "pelo seu link de afiliado."
-    )
-
-
-    return enviar_mensagem_email(
-        assunto,
-        "\n".join(
-            corpo
-        )
-    )
-
-
-def enviar_email_sem_ofertas():
-
-    assunto = (
-        "🔎 Buscador Diecast - Nenhuma oferta nova"
-    )
-
-
-    corpo = f"""
-🔎 BUSCADOR DIECAST
-
-Data: {HOJE}
-
-Busca automática concluída com sucesso.
-
-Nenhuma nova oferta ou queda de preço foi encontrada nesta rodada.
-
-✅ Sistema funcionando normalmente.
-
-As ofertas que já foram enviadas HOJE foram ignoradas.
-
-Amanhã, na primeira busca do dia, as ofertas elegíveis serão apresentadas novamente, mesmo que estejam no mesmo preço.
-
-O buscador continuará monitorando automaticamente.
-"""
-
-
-    return enviar_mensagem_email(
-        assunto,
-        corpo
-    )
-
-
 # =========================================================
-# EXECUTAR BUSCAS
+# BUSCAR
 # =========================================================
 
 links_vistos = set()
@@ -1087,11 +975,10 @@ for numero, busca in enumerate(
             timeout=30
         )
 
-
     except Exception as erro:
 
         print(
-            "ERRO NA BUSCA:",
+            "ERRO:",
             erro
         )
 
@@ -1101,7 +988,7 @@ for numero, busca in enumerate(
     if resposta.status_code != 200:
 
         print(
-            "ERRO:",
+            "ERRO HTTP:",
             resposta.status_code
         )
 
@@ -1144,6 +1031,14 @@ for numero, busca in enumerate(
             continue
 
 
+        # Remove internacional
+        if eh_internacional(
+            titulo,
+            trecho
+        ):
+            continue
+
+
         if not hot_wheels_valido(
             titulo,
             link
@@ -1152,6 +1047,11 @@ for numero, busca in enumerate(
 
 
         links_vistos.add(
+            link
+        )
+
+
+        loja = identificar_loja(
             link
         )
 
@@ -1174,16 +1074,15 @@ for numero, busca in enumerate(
             )
 
             validos = [
-                preco_encontrado
-                for preco_encontrado in precos
+                p
+                for p in precos
                 if preco_valido(
                     marca,
-                    preco_encontrado
+                    p
                 )
             ]
 
             if validos:
-
                 preco = validos[0]
 
 
@@ -1203,6 +1102,9 @@ for numero, busca in enumerate(
 
         resultados.append({
             "titulo": titulo,
+            "link": link,
+            "trecho": trecho,
+            "loja": loja,
             "marca": marca,
             "preco": preco,
             "desconto": desconto,
@@ -1213,13 +1115,12 @@ for numero, busca in enumerate(
             "tendencia":
                 identificar_tendencia(
                     titulo
-                ),
-            "link": link
+                )
         })
 
 
 # =========================================================
-# CLASSIFICAR OFERTAS
+# MEDIANA / OFERTAS
 # =========================================================
 
 ofertas = []
@@ -1227,78 +1128,22 @@ ofertas = []
 
 for item in resultados:
 
-    preco = item["preco"]
-    marca = item["marca"]
-    desconto = item["desconto"]
-
-    item["status"] = None
-
-
-    # HOT WHEELS < 69
-
-    if (
-        marca == "Hot Wheels"
-        and preco is not None
-        and preco < 69
-    ):
-
-        item["status"] = (
-            "HOT WHEELS PREMIUM/SILVER ABAIXO DE R$69"
+    item["mediana"] = (
+        calcular_mediana_mercado(
+            item,
+            resultados
         )
+    )
 
 
-    # DESCONTO >= 15%
-
-    elif (
-        desconto is not None
-        and desconto >= 15
-    ):
-
-        item["status"] = (
-            "DESCONTO DE 15% OU MAIS"
-        )
+    classificado = classificar(
+        item
+    )
 
 
-    # HOT WHEELS < 99
-
-    elif (
-        marca == "Hot Wheels"
-        and preco is not None
-        and preco < 99
-    ):
-
-        item["status"] = (
-            "HOT WHEELS PREMIUM/SILVER ABAIXO DE R$99"
-        )
-
-
-    # MINI GT < 150
-
-    elif (
-        marca == "Mini GT"
-        and preco is not None
-        and preco < 150
-    ):
-
-        item["status"] = (
-            "MINI GT ABAIXO DE R$150"
-        )
-
-
-    if item["status"]:
-
-        ranking, ranking_ordem = calcular_ranking(
-            item
-        )
-
-        item["ranking"] = ranking
-
-        item["ranking_ordem"] = (
-            ranking_ordem
-        )
-
+    if classificado:
         ofertas.append(
-            item
+            classificado
         )
 
 
@@ -1308,35 +1153,30 @@ for item in resultados:
 
 historico = carregar_historico()
 
-ofertas_para_enviar = []
+para_enviar = []
 
 
 for item in ofertas:
 
-    link = item["link"]
-    preco = item["preco"]
-
-
-    if preco is None:
+    if item["preco"] is None:
         continue
 
 
+    chave = item["link"]
+
     registro = historico.get(
-        link
+        chave
     )
 
 
-    # =====================================================
-    # NUNCA VIU A OFERTA
-    # =====================================================
-
+    # nunca enviado
     if registro is None:
 
         item["tipo_alerta"] = (
             "NOVA_OFERTA"
         )
 
-        ofertas_para_enviar.append(
+        para_enviar.append(
             item
         )
 
@@ -1348,48 +1188,40 @@ for item in ofertas:
     )
 
 
-    # =====================================================
-    # NOVO DIA
-    # MANDA NOVAMENTE MESMO NO MESMO PREÇO
-    # =====================================================
-
+    # novo dia = reapresenta
     if ultima_data != HOJE:
 
         item["tipo_alerta"] = (
-            "NOVA_OFERTA_DO_DIA"
+            "OFERTA_DO_DIA"
         )
 
-        ofertas_para_enviar.append(
+        para_enviar.append(
             item
         )
 
         continue
 
 
-    # =====================================================
-    # MESMO DIA
-    # SÓ MANDA SE CAIR O PREÇO
-    # =====================================================
-
-    menor_preco_dia = registro.get(
+    # mesmo dia, só se preço cair
+    menor_dia = registro.get(
         "menor_preco_dia"
     )
 
 
     if (
-        menor_preco_dia is None
-        or preco < menor_preco_dia
+        menor_dia is None
+        or item["preco"] < menor_dia
     ):
 
         item[
             "preco_anterior_encontrado"
-        ] = menor_preco_dia
+        ] = menor_dia
 
         item["tipo_alerta"] = (
             "QUEDA_PRECO"
         )
 
-        ofertas_para_enviar.append(
+        para_enviar.append(
             item
         )
 
@@ -1398,184 +1230,308 @@ for item in ofertas:
 # ORDENAR
 # =========================================================
 
-ofertas_para_enviar.sort(
-
+para_enviar.sort(
     key=lambda x: (
-
         x["ranking_ordem"],
-
         x["preco"]
-        if x["preco"]
+        if x["preco"] is not None
         else 999999
     )
 )
 
 
 # =========================================================
-# LINKS PARA AFILIADO
+# ARQUIVOS DE LINKS
 # =========================================================
 
 with open(
-    ARQUIVO_LINKS_AFILIADO,
+    ARQUIVO_ML,
     "w",
     encoding="utf-8"
 ) as arquivo:
 
-    for item in ofertas_para_enviar:
+    for item in para_enviar:
 
-        arquivo.write(
-            item["link"] + "\n"
+        if item["loja"] == "Mercado Livre":
+
+            arquivo.write(
+                item["link"] + "\n"
+            )
+
+
+with open(
+    ARQUIVO_AMAZON,
+    "w",
+    encoding="utf-8"
+) as arquivo:
+
+    for item in para_enviar:
+
+        if item["loja"] == "Amazon":
+
+            arquivo.write(
+                item["link"] + "\n"
+            )
+
+
+# =========================================================
+# MONTAR E-MAIL
+# =========================================================
+
+if para_enviar:
+
+    corpo = []
+
+    corpo.append(
+        "🚗 BUSCADOR DIECAST"
+    )
+
+    corpo.append(
+        f"Data: {HOJE}"
+    )
+
+    corpo.append("")
+
+
+    for numero, item in enumerate(
+        para_enviar,
+        start=1
+    ):
+
+        corpo.append(
+            "=" * 60
+        )
+
+        corpo.append(
+            f"{numero}. {item['ranking']}"
+        )
+
+        corpo.append(
+            f"🛍️ Loja: {item['loja']}"
+        )
+
+        corpo.append(
+            f"🏷️ Marca: {item['marca']}"
         )
 
 
-print()
+        if item["carros_top"]:
 
-print(
-    "ARQUIVO GERADO:",
-    ARQUIVO_LINKS_AFILIADO
-)
-
-print(
-    "LINKS PARA AFILIADO:",
-    len(ofertas_para_enviar)
-)
+            corpo.append(
+                "🏎️ Carro top: "
+                + ", ".join(
+                    item["carros_top"]
+                )
+            )
 
 
-# =========================================================
-# E-MAIL
-# =========================================================
+        if item["tendencia"]:
 
-email_enviado = False
+            corpo.append(
+                "📈 Tendência: "
+                + item["tendencia"]
+            )
 
 
-if ofertas_para_enviar:
+        corpo.append(
+            f"Produto: {item['titulo']}"
+        )
 
-    print(
-        "Foram encontradas ofertas para enviar."
+
+        if (
+            item.get(
+                "tipo_alerta"
+            )
+            == "QUEDA_PRECO"
+        ):
+
+            anterior = item.get(
+                "preco_anterior_encontrado"
+            )
+
+            if anterior is not None:
+
+                corpo.append(
+                    f"📉 Antes hoje: "
+                    f"R$ {anterior:.2f}"
+                )
+
+
+        corpo.append(
+            f"💰 PREÇO: "
+            f"R$ {item['preco']:.2f}"
+        )
+
+
+        if item["desconto"] is not None:
+
+            corpo.append(
+                f"🔥 Desconto: "
+                f"{item['desconto']:.1f}%"
+            )
+
+
+        if item["mediana"] is not None:
+
+            corpo.append(
+                f"📊 Mediana encontrada: "
+                f"R$ {item['mediana']:.2f}"
+            )
+
+
+        corpo.append(
+            f"🔎 Motivo: "
+            f"{item['status']}"
+        )
+
+        corpo.append("")
+
+        corpo.append(
+            "🔗 LINK:"
+        )
+
+        corpo.append(
+            item["link"]
+        )
+
+        corpo.append("")
+
+        corpo.append(
+            "📲 TEXTO PARA WHATSAPP"
+        )
+
+        corpo.append("")
+
+        corpo.append(
+            item["ranking"]
+        )
+
+        corpo.append(
+            f"🏎️ *{item['titulo']}*"
+        )
+
+        corpo.append(
+            f"💰 *R$ {item['preco']:.2f}*"
+        )
+
+
+        if item["desconto"] is not None:
+
+            corpo.append(
+                f"🔥 {item['desconto']:.0f}% OFF"
+            )
+
+
+        corpo.append("")
+
+        corpo.append(
+            "🛒 Comprar:"
+        )
+
+        corpo.append(
+            item["link"]
+        )
+
+        corpo.append("")
+
+        corpo.append(
+            "⚠️ Preço pode mudar a qualquer momento."
+        )
+
+        corpo.append("")
+
+
+    assunto = (
+        f"🚨 {len(para_enviar)} oferta(s) "
+        f"Diecast - ML + Amazon"
     )
 
-    email_enviado = enviar_email_ofertas(
-        ofertas_para_enviar
+
+    email_ok = enviar_email(
+        assunto,
+        "\n".join(corpo)
     )
 
 
 else:
 
-    print(
-        "Nenhuma oferta nova encontrada nesta rodada."
-    )
+    corpo = f"""
+🔎 BUSCADOR DIECAST
 
-    email_enviado = enviar_email_sem_ofertas()
+Data: {HOJE}
+
+Busca concluída com sucesso.
+
+Nenhuma nova oferta elegível foi encontrada nesta rodada.
+
+✅ Mercado Livre monitorado
+✅ Amazon Brasil monitorada
+✅ Produtos internacionais ignorados
+✅ Produtos usados/loose ignorados
+✅ Ofertas já enviadas hoje ignoradas
+
+O buscador continuará monitorando automaticamente.
+"""
+
+
+    email_ok = enviar_email(
+        "🔎 Diecast - Nenhuma nova oferta",
+        corpo
+    )
 
 
 # =========================================================
 # ATUALIZAR HISTÓRICO
-# SÓ DEPOIS DO E-MAIL FUNCIONAR
 # =========================================================
 
 if (
-    ofertas_para_enviar
-    and email_enviado
+    para_enviar
+    and email_ok
 ):
 
-    for item in ofertas_para_enviar:
+    for item in para_enviar:
 
         link = item["link"]
+
         preco = item["preco"]
 
-        registro_antigo = historico.get(
+        antigo = historico.get(
             link,
             {}
         )
 
 
-        menor_historico = registro_antigo.get(
-            "menor_preco_historico"
-        )
-
-
-        if (
-            menor_historico is None
-            or preco < menor_historico
-        ):
-
-            menor_historico = preco
-
-
-        # Se é novo dia, começa novo menor preço diário
-        if (
-            registro_antigo.get(
-                "ultima_data_enviada"
-            ) != HOJE
-        ):
-
-            menor_preco_dia = preco
-
-
-        else:
-
-            menor_preco_dia_anterior = (
-                registro_antigo.get(
-                    "menor_preco_dia"
-                )
-            )
-
-            if (
-                menor_preco_dia_anterior is None
-                or preco < menor_preco_dia_anterior
-            ):
-
-                menor_preco_dia = preco
-
-            else:
-
-                menor_preco_dia = (
-                    menor_preco_dia_anterior
-                )
-
-
         historico[
             link
         ] = {
-
             "titulo":
                 item["titulo"],
 
             "marca":
                 item["marca"],
 
+            "loja":
+                item["loja"],
+
             "ultima_data_enviada":
                 HOJE,
 
             "menor_preco_dia":
-                menor_preco_dia,
+                preco,
 
             "menor_preco_historico":
-                menor_historico
+                min(
+                    preco,
+                    antigo.get(
+                        "menor_preco_historico",
+                        preco
+                    )
+                )
         }
 
 
     salvar_historico(
         historico
-    )
-
-
-    print(
-        "Histórico diário atualizado."
-    )
-
-
-elif (
-    ofertas_para_enviar
-    and not email_enviado
-):
-
-    print(
-        "O e-mail falhou."
-    )
-
-    print(
-        "As ofertas NÃO foram marcadas como enviadas."
     )
 
 
@@ -1588,50 +1544,22 @@ print("=" * 80)
 
 print(
     "OFERTAS ENVIADAS:",
-    len(ofertas_para_enviar)
+    len(para_enviar)
 )
 
 print("=" * 80)
-print()
 
 
-for item in ofertas_para_enviar:
+for item in para_enviar:
 
     print(
         item["ranking"]
     )
 
     print(
-        item["status"]
+        "LOJA:",
+        item["loja"]
     )
-
-
-    if (
-        item.get("tipo_alerta")
-        == "NOVA_OFERTA_DO_DIA"
-    ):
-
-        print(
-            "🌅 OFERTA REAPRESENTADA NO NOVO DIA"
-        )
-
-
-    elif (
-        item.get("tipo_alerta")
-        == "QUEDA_PRECO"
-    ):
-
-        print(
-            "📉 PREÇO CAIU NO MESMO DIA"
-        )
-
-
-    else:
-
-        print(
-            "🆕 NOVA OFERTA"
-        )
-
 
     print(
         "MARCA:",
@@ -1644,10 +1572,9 @@ for item in ofertas_para_enviar:
     )
 
     print(
-        f"PREÇO: "
-        f"R$ {item['preco']:.2f}"
+        f"PREÇO: R$ "
+        f"{item['preco']:.2f}"
     )
-
 
     if item["desconto"] is not None:
 
@@ -1656,16 +1583,17 @@ for item in ofertas_para_enviar:
             f"{item['desconto']:.1f}%"
         )
 
-
     print(
         "LINK:",
         item["link"]
     )
 
-    print("-" * 80)
+    print(
+        "-" * 80
+    )
 
 
-if email_enviado:
+if email_ok:
 
     print(
         "📧 E-MAIL ENVIADO COM SUCESSO."
