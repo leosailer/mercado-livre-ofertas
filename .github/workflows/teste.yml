@@ -1,57 +1,104 @@
-name: Buscador Diecast Automatico
+name: Buscar Ofertas Diecast
 
 on:
   workflow_dispatch:
 
   schedule:
-    # 08:07 até 11:37 - a cada 30 minutos
-    - cron: "7,37 8-11 * * *"
-      timezone: "America/Sao_Paulo"
-
-    # 12:07 até 22:52 - a cada 15 minutos
-    - cron: "7,22,37,52 12-22 * * *"
-      timezone: "America/Sao_Paulo"
-
-    # Última busca às 23:07
-    - cron: "7 23 * * *"
-      timezone: "America/Sao_Paulo"
+    # Executa a cada 30 minutos.
+    # GitHub Actions usa UTC.
+    # 10:00 UTC = 07:00 no horário de Brasília.
+    # 03:00 UTC = 00:00 no horário de Brasília.
+    - cron: "*/30 10-23 * * *"
+    - cron: "*/30 0-2 * * *"
 
 permissions:
   contents: write
 
 jobs:
-  buscar:
+  buscar-ofertas:
+
     runs-on: ubuntu-latest
 
+    env:
+      EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+
+      ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
+      ML_REFRESH_TOKEN: ${{ secrets.ML_REFRESH_TOKEN }}
+      ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+      ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+
+      # Mantido por enquanto.
+      # O novo buscador não deverá depender dele.
+      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+
     steps:
-      - name: Baixar projeto
-        uses: actions/checkout@v6
+
+      # ==================================================
+      # BAIXAR REPOSITÓRIO
+      # ==================================================
+
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+
+      # ==================================================
+      # CONFIGURAR PYTHON
+      # ==================================================
 
       - name: Configurar Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Instalar dependencias
-        run: pip install requests
 
-      - name: Buscar ofertas e enviar email
-        env:
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-        run: python main.py
+      # ==================================================
+      # INSTALAR DEPENDÊNCIAS
+      # ==================================================
 
-      - name: Salvar historico e links
+      - name: Instalar dependências
         run: |
-          git config user.name "Buscador Diecast"
-          git config user.email "actions@github.com"
+          python -m pip install --upgrade pip
+          pip install requests
 
-          git add ofertas_vistas.json links_para_afiliado.txt links_amazon.txt
+
+      # ==================================================
+      # EXECUTAR BUSCADOR
+      # ==================================================
+
+      - name: Run python main.py
+        run: |
+          python main.py
+
+
+      # ==================================================
+      # SALVAR HISTÓRICO
+      #
+      # Se o main.py modificar ofertas_vistas.json,
+      # o GitHub salva para a próxima execução.
+      # ==================================================
+
+      - name: Salvar histórico
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -f ofertas_vistas.json ]; then
+            git add ofertas_vistas.json
+          fi
+
+          if [ -f links_para_afiliado.txt ]; then
+            git add links_para_afiliado.txt
+          fi
+
+          if [ -f links_amazon.txt ]; then
+            git add links_amazon.txt
+          fi
 
           if git diff --cached --quiet; then
-            echo "Nenhuma alteracao para salvar"
+            echo "Nenhuma alteração para salvar."
           else
-            git commit -m "Atualiza ofertas e historico"
+            git commit -m "Atualizar histórico de ofertas"
             git push
           fi
