@@ -1,38 +1,20 @@
 {
-  "data": "2026-09-03",
+  "data": "2026-09-04",
   "ofertas": {
-    "6646744056674024265": {
-      "titulo": "Porsche 993 GT2 Hot Wheels Car Culture",
-      "preco": 68.94,
-      "score": 84,
-      "loja": "Mercado Livre"
-    },
-    "carrinho hot wheels premium porsche 917kh car culture circuit legends jbk63|ri happy brinquedos": {
-      "titulo": "Carrinho Hot Wheels Premium Porsche 917KH Car Culture Circuit Legends JBK63",
-      "preco": 69.9,
-      "score": 68,
-      "loja": "Ri Happy Brinquedos"
-    },
-    "11176281589525401026": {
-      "titulo": "Hot Wheels Thrill Climbers Mitsubishi Lancer Evolution",
-      "preco": 78.99,
-      "score": 68,
-      "loja": "mercadolivre.com.br"
-    },
-    "hot wheels vintage racing club - custom datsun 240z|mercado livre": {
-      "titulo": "Hot Wheels Vintage Racing Club - Custom Datsun 240z",
-      "preco": 75.84,
-      "score": 63,
-      "loja": "Mercado Livre"
-    },
     "hot wheels - premium - boulevard - fast-&-furios - f&f- premium - silver - spider - f150/charger/porsche/chevelle/nova|shopee.com.br": {
       "titulo": "Hot Wheels - PREMIUM - BOULEVARD - FAST-&-FURIOS - F&F- PREMIUM - SILVER - SPIDER - F150/CHARGER/PORSCHE/CHEVELLE/NOVA",
       "preco": 39.9,
       "score": 98,
       "loja": "shopee.com.br"
     },
-    "m* hot wheels premium boulevard set 2026 original mattel */|mercado livre": {
-      "titulo": "M* Hot Wheels Premium Boulevard Set 2026 Original Mattel */",
+    "6646744056674024265": {
+      "titulo": "Porsche 993 GT2 Hot Wheels Car Culture",
+      "preco": 67.23,
+      "score": 84,
+      "loja": "Mercado Livre"
+    },
+    "m* hot wheels premium boulevard set 2026 original mattel /wf|mercado livre": {
+      "titulo": "M* Hot Wheels Premium Boulevard Set 2026 Original Mattel /wf",
       "preco": 60.16,
       "score": 77,
       "loja": "Mercado Livre"
@@ -43,17 +25,23 @@
       "score": 77,
       "loja": "Mercado Livre"
     },
-    "hot wheels silver series audi rs 5 coupe - jky17|shopee": {
-      "titulo": "Hot Wheels Silver Series Audi RS 5 Coupé - JKY17",
-      "preco": 62.5,
-      "score": 67,
-      "loja": "Shopee"
+    "carrinho hot wheels premium porsche 917kh car culture circuit legends jbk63|ri happy brinquedos": {
+      "titulo": "Carrinho Hot Wheels Premium Porsche 917KH Car Culture Circuit Legends JBK63",
+      "preco": 69.9,
+      "score": 68,
+      "loja": "Ri Happy Brinquedos"
     },
     "hot wheels boulevard premium|mercado livre": {
       "titulo": "Hot Wheels Boulevard Premium",
       "preco": 74.9,
       "score": 60,
       "loja": "Mercado Livre"
+    },
+    "carrinhos hot wheels premium boulevard - mattel|shopee.com.br": {
+      "titulo": "Carrinhos Hot Wheels Premium Boulevard - Mattel",
+      "preco": 69.99,
+      "score": 59,
+      "loja": "shopee.com.br"
     }
   }
 }
