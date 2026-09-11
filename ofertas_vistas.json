@@ -1,40 +1,22 @@
 {
-  "data": "2026-09-10",
+  "data": "2026-09-11",
   "ofertas": {
+    "3287301055205720212": {
+      "titulo": "Hot Wheels Premium Mclaren Solus Gt",
+      "preco": 52.63,
+      "score": 91,
+      "loja": "Mercado Livre"
+    },
     "hot wheels car culture - thrill climbers mitsubishi lancer evolution vi|ri happy brinquedos": {
       "titulo": "Hot Wheels Car Culture - Thrill Climbers Mitsubishi Lancer Evolution VI",
       "preco": 65.9,
       "score": 73,
       "loja": "Ri Happy Brinquedos"
     },
-    "carrinho hot wheels premium porsche 917kh car culture circuit legends jbk63|ri happy brinquedos": {
-      "titulo": "Carrinho Hot Wheels Premium Porsche 917KH Car Culture Circuit Legends JBK63",
-      "preco": 69.9,
-      "score": 68,
-      "loja": "Ri Happy Brinquedos"
-    },
-    "[direct from japan] mattel hot wheels boulevard ’32 ford die-cast car green|shopee": {
-      "titulo": "[Direct from Japan] MATTEL Hot Wheels Boulevard ’32 Ford Die-Cast Car Green",
-      "preco": 55.0,
-      "score": 79,
-      "loja": "Shopee"
-    },
-    "*m* hot wheels premium boulevard set 2026 original *m12|mercado livre": {
-      "titulo": "*m* Hot Wheels Premium Boulevard Set 2026 Original *m12",
-      "preco": 61.21,
-      "score": 77,
-      "loja": "Mercado Livre"
-    },
-    "carro hot wheels silver series dc speed trap 18/20 mattel hdg89|magalu": {
-      "titulo": "Carro HOT Wheels Silver Series DC Speed TRAP 18/20 Mattel HDG89",
-      "preco": 45.51,
-      "score": 75,
-      "loja": "Magalu"
-    },
-    "hot wheels silver series audi rs 5 coupe - jky17|shopee": {
-      "titulo": "Hot Wheels Silver Series Audi RS 5 Coupé - JKY17",
-      "preco": 62.5,
-      "score": 67,
+    "17699371648152458841": {
+      "titulo": "Carrinho Hot Wheels Premium Porsche 917 Kh",
+      "preco": 69.99,
+      "score": 61,
       "loja": "Shopee"
     }
   }
